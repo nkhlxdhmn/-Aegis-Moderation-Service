@@ -9,7 +9,7 @@ jobs:
   build-cpu:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build default image (CPU, no GPU required)
         run: docker build -t aegis-moderation:ci .
       - name: Smoke-test health endpoint
