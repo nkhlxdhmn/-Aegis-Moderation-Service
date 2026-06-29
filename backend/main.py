@@ -22,6 +22,7 @@ from backend.documents import (
     write_document_upload,
 )
 from backend.image_io import ImageInputError, download_image, write_upload
+from backend.monitor import monitor
 from backend.pipeline.safety_flags import analyze_image
 from backend.pipeline.text_moderation import moderate_text
 from backend.pipeline.video_moderation import moderate_video
@@ -33,6 +34,8 @@ except Exception:  # pragma: no cover - metrics are optional at runtime
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
     Counter = Histogram = None
     generate_latest = None
+
+from backend import monitoring_routes
 
 APP_NAME = "Aegis Moderation"
 APP_VERSION = "1.0.0"
@@ -58,6 +61,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.include_router(monitoring_routes.router)
 
 
 # Security headers injected on every response.
@@ -108,6 +113,17 @@ def index() -> FileResponse:
     if not index_path.exists():
         raise HTTPException(status_code=500, detail="Frontend assets are missing.")
     return FileResponse(index_path, media_type="text/html")
+
+
+@app.get("/dashboard", include_in_schema=False)
+@app.get("/monitor", include_in_schema=False)
+def monitoring_dashboard() -> FileResponse:
+    """Serve the monitoring and observability dashboard."""
+
+    dash_path = FRONTEND_DIR / "dashboard.html"
+    if not dash_path.exists():
+        raise HTTPException(status_code=500, detail="Dashboard assets are missing.")
+    return FileResponse(dash_path, media_type="text/html")
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)
@@ -165,15 +181,27 @@ async def _write_binary_upload(
 
     suffix = Path(file.filename or "upload.bin").suffix.lower()
     if suffix not in allowed_suffixes:
+        monitor.record_security_event(
+            event_type="blocked_file_type",
+            detail=f"Rejected extension '{suffix}' from '{file.filename}'",
+        )
         raise HTTPException(
             status_code=400, detail=f"Supported extensions: {', '.join(sorted(allowed_suffixes))}."
         )
     if file.content_type and file.content_type not in allowed_content_types:
+        monitor.record_security_event(
+            event_type="invalid_mime_type",
+            detail=f"Rejected content-type '{file.content_type}' for '{file.filename}'",
+        )
         raise HTTPException(status_code=400, detail="Unsupported media type.")
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Upload is empty.")
     if len(contents) > max_bytes:
+        monitor.record_security_event(
+            event_type="oversized_upload",
+            detail=f"Upload '{file.filename}' size {len(contents)} exceeds {max_bytes}",
+        )
         raise HTTPException(status_code=400, detail="Upload exceeds the size limit.")
 
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -190,6 +218,8 @@ async def _analyze_image_path(image_path: Path, caption: str | None = None) -> d
     """Run the image pipeline and normalize its public report."""
 
     started = time.perf_counter()
+    status = "error"
+    report: dict[str, Any] = {}
     try:
         result = await run_in_threadpool(analyze_image, str(image_path), caption)
         report = build_report(result)
@@ -198,13 +228,23 @@ async def _analyze_image_path(image_path: Path, caption: str | None = None) -> d
         return report
     except Exception as exc:  # pragma: no cover - depends on optional model stack
         logger.exception("Image analysis failed")
-        status = "error"
+        monitor.record_error(endpoint="image", error_type="ModelError", detail=str(exc))
         raise HTTPException(status_code=500, detail="Image analysis failed.") from exc
     finally:
+        duration = time.perf_counter() - started
         if ANALYSIS_LATENCY:
-            ANALYSIS_LATENCY.observe(time.perf_counter() - started)
+            ANALYSIS_LATENCY.observe(duration)
         if REQUEST_COUNT:
-            REQUEST_COUNT.labels(endpoint="image", status=locals().get("status", "error")).inc()
+            REQUEST_COUNT.labels(endpoint="image", status=status).inc()
+        monitor.record_request(
+            endpoint="image",
+            status=status,
+            duration=duration,
+            decision=report.get("decision", "unknown"),
+            content_type="image",
+            categories=report.get("categories") or {},
+        )
+        monitor.record_inference("vision", duration)
         image_path.unlink(missing_ok=True)
 
 
@@ -227,6 +267,10 @@ async def _moderate_image_input(
         else:
             image_path = await run_in_threadpool(download_image, image_url or "")
     except ImageInputError as exc:
+        monitor.record_security_event(
+            event_type="invalid_image_url" if has_url else "invalid_image_upload",
+            detail=str(exc),
+        )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return JSONResponse(await _analyze_image_path(image_path, caption))
@@ -262,6 +306,9 @@ async def moderate_video_endpoint(
         },
         max_bytes=250 * 1024 * 1024,
     )
+    started = time.perf_counter()
+    status = "error"
+    report: dict[str, Any] = {}
     try:
         result = await run_in_threadpool(moderate_video, str(path), {"caption": caption or ""})
         report = build_report(result)
@@ -272,8 +319,21 @@ async def moderate_video_endpoint(
             "max_consecutive_unsafe": getattr(result, "max_consecutive_unsafe", 0),
             "transcript": getattr(result, "transcript", ""),
         }
+        status = "ok"
         return JSONResponse(report)
+    except Exception as exc:
+        monitor.record_error(endpoint="video", error_type="VideoModerationError", detail=str(exc))
+        raise
     finally:
+        duration = time.perf_counter() - started
+        monitor.record_request(
+            endpoint="video",
+            status=status,
+            duration=duration,
+            decision=report.get("decision", "unknown"),
+            content_type="video",
+            categories=report.get("categories") or {},
+        )
         path.unlink(missing_ok=True)
 
 
@@ -281,11 +341,30 @@ async def moderate_video_endpoint(
 async def moderate_text_endpoint(request: TextModerationRequest) -> JSONResponse:
     """Analyze submitted plain text."""
 
-    result = await run_in_threadpool(moderate_text, request.text)
-    report = build_report(result)
-    report["content_type"] = "text"
-    report["extracted_text_preview"] = request.text[:2000]
-    return JSONResponse(report)
+    started = time.perf_counter()
+    status = "error"
+    report: dict[str, Any] = {}
+    try:
+        result = await run_in_threadpool(moderate_text, request.text)
+        report = build_report(result)
+        report["content_type"] = "text"
+        report["extracted_text_preview"] = request.text[:2000]
+        status = "ok"
+        return JSONResponse(report)
+    except Exception as exc:
+        monitor.record_error(endpoint="text", error_type="TextModerationError", detail=str(exc))
+        raise
+    finally:
+        duration = time.perf_counter() - started
+        monitor.record_request(
+            endpoint="text",
+            status=status,
+            duration=duration,
+            decision=report.get("decision", "unknown"),
+            content_type="text",
+            categories=report.get("categories") or {},
+        )
+        monitor.record_inference("nlp", duration)
 
 
 @app.post("/api/v1/moderate/pdf")
@@ -322,6 +401,10 @@ async def _moderate_document_input(
             status_code=400, detail=f"Provide either a {suffix.upper().lstrip('.')} upload or URL."
         )
 
+    started = time.perf_counter()
+    status = "error"
+    report: dict[str, Any] = {}
+    document = None
     try:
         if has_file and file is not None:
             document = write_document_upload(
@@ -334,11 +417,30 @@ async def _moderate_document_input(
             document = await run_in_threadpool(download_document, document_url or "", suffix)
         report = await run_in_threadpool(processor, document)
         report["content_type"] = content_type
+        status = "ok"
         return JSONResponse(report)
     except DocumentInputError as exc:
+        monitor.record_security_event(
+            event_type="invalid_document",
+            detail=f"{content_type.upper()}: {exc}",
+        )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        monitor.record_error(
+            endpoint=content_type, error_type="DocumentModerationError", detail=str(exc)
+        )
+        raise
     finally:
-        if "document" in locals():
+        duration = time.perf_counter() - started
+        monitor.record_request(
+            endpoint=content_type,
+            status=status,
+            duration=duration,
+            decision=report.get("decision", "unknown"),
+            content_type=content_type,
+            categories=report.get("categories") or {},
+        )
+        if document is not None:
             document.path.unlink(missing_ok=True)
 
 

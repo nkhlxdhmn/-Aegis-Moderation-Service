@@ -45,6 +45,44 @@ try:
         "Moderation decisions served from image hash cache",
     )
 
+    # Extended metrics for detailed observability
+    aegis_content_type_total = Counter(
+        "aegis_content_type_total",
+        "Moderation requests by content type and decision",
+        ["content_type", "decision"],
+    )
+    aegis_category_flagged_total = Counter(
+        "aegis_category_flagged_total",
+        "Content items flagged per moderation category",
+        ["category"],
+    )
+    aegis_inference_seconds = Histogram(
+        "aegis_inference_seconds",
+        "Per-model inference latency in seconds",
+        ["model"],
+        buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0],
+    )
+    aegis_ocr_seconds = Histogram(
+        "aegis_ocr_seconds",
+        "OCR pipeline latency in seconds",
+        buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0],
+    )
+    aegis_vision_seconds = Histogram(
+        "aegis_vision_seconds",
+        "Vision pipeline latency in seconds",
+        buckets=[0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0],
+    )
+    aegis_nlp_seconds = Histogram(
+        "aegis_nlp_seconds",
+        "NLP/text pipeline latency in seconds",
+        buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0],
+    )
+    aegis_security_events_total = Counter(
+        "aegis_security_events_total",
+        "Security validation events by type",
+        ["event_type"],
+    )
+
 except ImportError:
     logger.debug("prometheus_client not installed — using no-op metric stubs")
 
@@ -56,13 +94,16 @@ except ImportError:
             pass
 
     class _Noop:
-        def labels(self, **_kw: object) -> _Noop:
+        def labels(self, *_a: object, **_kw: object) -> _Noop:
             return self
 
         def inc(self, *_a: object, **_kw: object) -> None:
             pass
 
         def observe(self, *_a: object, **_kw: object) -> None:
+            pass
+
+        def set(self, *_a: object, **_kw: object) -> None:
             pass
 
         def time(self) -> _NoopCtx:
@@ -74,3 +115,10 @@ except ImportError:
     llama_skip_total = _Noop()  # type: ignore[assignment]
     ocr_skip_total = _Noop()  # type: ignore[assignment]
     hash_cache_hits_total = _Noop()  # type: ignore[assignment]
+    aegis_content_type_total = _Noop()  # type: ignore[assignment]
+    aegis_category_flagged_total = _Noop()  # type: ignore[assignment]
+    aegis_inference_seconds = _Noop()  # type: ignore[assignment]
+    aegis_ocr_seconds = _Noop()  # type: ignore[assignment]
+    aegis_vision_seconds = _Noop()  # type: ignore[assignment]
+    aegis_nlp_seconds = _Noop()  # type: ignore[assignment]
+    aegis_security_events_total = _Noop()  # type: ignore[assignment]
