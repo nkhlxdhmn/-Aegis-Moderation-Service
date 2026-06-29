@@ -4,7 +4,6 @@ from unittest import TestCase
 
 from backend.pipeline.text_safety import analyze_text_safety, get_text_safety_scores
 
-
 EXPECTED_KEYS = {
     "terrorism_score",
     "fraud_score",

@@ -1,8 +1,7 @@
 """Unit tests for SigLIP2 signal aggregation (replaces old OpenCLIP tests)."""
 
-from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from backend.pipeline import clip_engine
 from backend.pipeline.clip_engine import ClipAnalysisResult
@@ -50,12 +49,14 @@ class ClipEngineTests(TestCase):
         for all sigmoid scoring passes."""
         cat_scores = {cat: 0.5 for cat in clip_engine.CATEGORY_PROMPTS}
 
-        with patch("backend.pipeline.clip_engine._get_state") as get_state, \
-             patch("backend.pipeline.clip_engine._encode_image") as encode_image, \
-             patch("backend.pipeline.clip_engine._category_scores_from_pv", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._encode_text_query", return_value=None), \
-             patch("backend.pipeline.clip_engine._fuse_category_scores", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._sigmoid_scores") as sigmoid_scores:
+        with (
+            patch("backend.pipeline.clip_engine._get_state") as get_state,
+            patch("backend.pipeline.clip_engine._encode_image") as encode_image,
+            patch("backend.pipeline.clip_engine._category_scores_from_pv", return_value=cat_scores),
+            patch("backend.pipeline.clip_engine._encode_text_query", return_value=None),
+            patch("backend.pipeline.clip_engine._fuse_category_scores", return_value=cat_scores),
+            patch("backend.pipeline.clip_engine._sigmoid_scores") as sigmoid_scores,
+        ):
 
             state_mock = MagicMock()
             state_mock.torch.cuda.empty_cache = MagicMock()
@@ -71,7 +72,7 @@ class ClipEngineTests(TestCase):
             # _sigmoid_scores is called for heritage, safety, child, promotion
             sigmoid_scores.return_value = {}
 
-            result = clip_engine.analyze_content("image.jpg", None, "")
+            clip_engine.analyze_content("image.jpg", None, "")
 
         encode_image.assert_called_once_with("image.jpg", state_mock)
         # _sigmoid_scores called 4 times: heritage, safety, child, promotion
@@ -83,12 +84,14 @@ class ClipEngineTests(TestCase):
     def test_analyze_content_returns_all_score_groups(self) -> None:
         cat_scores = {cat: 0.5 for cat in clip_engine.CATEGORY_PROMPTS}
 
-        with patch("backend.pipeline.clip_engine._get_state") as get_state, \
-             patch("backend.pipeline.clip_engine._encode_image"), \
-             patch("backend.pipeline.clip_engine._category_scores_from_pv", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._encode_text_query", return_value=None), \
-             patch("backend.pipeline.clip_engine._fuse_category_scores", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._sigmoid_scores") as sigmoid_scores:
+        with (
+            patch("backend.pipeline.clip_engine._get_state") as get_state,
+            patch("backend.pipeline.clip_engine._encode_image"),
+            patch("backend.pipeline.clip_engine._category_scores_from_pv", return_value=cat_scores),
+            patch("backend.pipeline.clip_engine._encode_text_query", return_value=None),
+            patch("backend.pipeline.clip_engine._fuse_category_scores", return_value=cat_scores),
+            patch("backend.pipeline.clip_engine._sigmoid_scores") as sigmoid_scores,
+        ):
 
             state_mock = MagicMock()
             state_mock.torch.cuda.empty_cache = MagicMock()
@@ -96,9 +99,9 @@ class ClipEngineTests(TestCase):
 
             sigmoid_scores.side_effect = [
                 {p: 0.7 for p in clip_engine.HERITAGE_PROMPTS},  # heritage pass
-                {p: 0.3 for p in clip_engine.SAFETY_PROMPTS},    # safety pass
-                {p: 0.1 for p in clip_engine.CHILD_PROMPTS},     # child pass
-                {p: 0.2 for p in clip_engine.PROMOTION_PROMPTS}, # promotion pass
+                {p: 0.3 for p in clip_engine.SAFETY_PROMPTS},  # safety pass
+                {p: 0.1 for p in clip_engine.CHILD_PROMPTS},  # child pass
+                {p: 0.2 for p in clip_engine.PROMOTION_PROMPTS},  # promotion pass
             ]
 
             result = clip_engine.analyze_content("image.jpg", "a caption", "ocr")
@@ -114,18 +117,22 @@ class ClipEngineTests(TestCase):
         """When OCR text and caption are non-empty, _encode_text_query is called twice."""
         cat_scores = {cat: 0.0 for cat in clip_engine.CATEGORY_PROMPTS}
 
-        with patch("backend.pipeline.clip_engine._get_state") as get_state, \
-             patch("backend.pipeline.clip_engine._encode_image"), \
-             patch("backend.pipeline.clip_engine._category_scores_from_pv", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._encode_text_query") as encode_text_query, \
-             patch("backend.pipeline.clip_engine._category_scores_from_text", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._fuse_category_scores", return_value=cat_scores), \
-             patch("backend.pipeline.clip_engine._sigmoid_scores", return_value={}):
+        with (
+            patch("backend.pipeline.clip_engine._get_state") as get_state,
+            patch("backend.pipeline.clip_engine._encode_image"),
+            patch("backend.pipeline.clip_engine._category_scores_from_pv", return_value=cat_scores),
+            patch("backend.pipeline.clip_engine._encode_text_query") as encode_text_query,
+            patch(
+                "backend.pipeline.clip_engine._category_scores_from_text", return_value=cat_scores
+            ),
+            patch("backend.pipeline.clip_engine._fuse_category_scores", return_value=cat_scores),
+            patch("backend.pipeline.clip_engine._sigmoid_scores", return_value={}),
+        ):
 
             state_mock = MagicMock()
             state_mock.torch.cuda.empty_cache = MagicMock()
             get_state.return_value = state_mock
-            encode_text_query.return_value = MagicMock()   # non-None â†’ uses text path
+            encode_text_query.return_value = MagicMock()  # non-None â†’ uses text path
 
             clip_engine.analyze_content("image.jpg", "caption text", "ocr text")
 
@@ -133,9 +140,10 @@ class ClipEngineTests(TestCase):
         self.assertEqual(encode_text_query.call_count, 2)
 
     def test_sigmoid_scores_not_called_when_get_state_fails(self) -> None:
-        with patch("backend.pipeline.clip_engine._get_state",
-                   side_effect=RuntimeError("no GPU")), \
-             patch("backend.pipeline.clip_engine._sigmoid_scores") as sigmoid_scores:
+        with (
+            patch("backend.pipeline.clip_engine._get_state", side_effect=RuntimeError("no GPU")),
+            patch("backend.pipeline.clip_engine._sigmoid_scores") as sigmoid_scores,
+        ):
             with self.assertRaises(clip_engine.ModelInferenceError):
                 clip_engine.analyze_content("image.jpg", None, "")
         sigmoid_scores.assert_not_called()
@@ -145,11 +153,13 @@ class ClipEngineTests(TestCase):
 
     def test_get_category_scores_delegates_to_analyze_content(self) -> None:
         expected = {cat: 0.42 for cat in clip_engine.CATEGORY_PROMPTS}
-        with patch("backend.pipeline.clip_engine.analyze_content",
-                   return_value=ClipAnalysisResult(
-                       category_scores=expected,
-                       heritage_score=0.8,
-                   )) as mock_analyze:
+        with patch(
+            "backend.pipeline.clip_engine.analyze_content",
+            return_value=ClipAnalysisResult(
+                category_scores=expected,
+                heritage_score=0.8,
+            ),
+        ) as mock_analyze:
             result = clip_engine.get_category_scores("img.jpg", "cap", "ocr")
 
         mock_analyze.assert_called_once_with("img.jpg", "cap", "ocr")

@@ -4,7 +4,7 @@ import sys
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock, patch
 
 from backend.pipeline import object_detector
 
@@ -19,6 +19,7 @@ class _TensorScalar:
 
 def _make_torch_mock(*, cuda_available: bool) -> SimpleNamespace:
     """Build a minimal torch-compatible namespace for unit tests."""
+
     @contextmanager
     def inference_mode():
         yield

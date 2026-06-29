@@ -8,23 +8,43 @@ their individual noise floors.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import logging
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 WEAPON_LABELS = {
-    "weapon", "gun", "rifle", "knife", "pistol", "firearm", "handgun", "sword",
+    "weapon",
+    "gun",
+    "rifle",
+    "knife",
+    "pistol",
+    "firearm",
+    "handgun",
+    "sword",
 }
 BLOOD_LABELS = {
-    "blood", "gore", "dead body", "corpse", "body",
+    "blood",
+    "gore",
+    "dead body",
+    "corpse",
+    "body",
 }
 VIOLENCE_LABELS = {
-    "violence", "violent", "murder", "assault", "attack", "fight",
+    "violence",
+    "violent",
+    "murder",
+    "assault",
+    "attack",
+    "fight",
 }
 SELF_HARM_LABELS = {
-    "self harm", "self-harm", "self_harm", "suicide", "suicidal",
+    "self harm",
+    "self-harm",
+    "self_harm",
+    "suicide",
+    "suicidal",
 }
 
 SAFETY_PROMPTS = (
@@ -60,10 +80,7 @@ def _norm(value: Any) -> str:
 
 def _yolo_confidence(detection: Mapping[str, Any]) -> float:
     return _clamp(
-        detection.get("confidence")
-        or detection.get("score")
-        or detection.get("probability")
-        or 0.0
+        detection.get("confidence") or detection.get("score") or detection.get("probability") or 0.0
     )
 
 
@@ -78,7 +95,7 @@ def _yolo_label(detection: Mapping[str, Any]) -> str:
 
 
 def _norm_set(labels: set[str]) -> set[str]:
-    return {_norm(l) for l in labels}
+    return {_norm(lbl) for lbl in labels}
 
 
 def _max_yolo_buckets(

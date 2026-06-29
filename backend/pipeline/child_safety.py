@@ -14,18 +14,29 @@ Key fixes over the previous version:
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import logging
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 CHILD_LABELS = {
-    "child", "infant", "toddler", "minor", "school child", "school_child",
+    "child",
+    "infant",
+    "toddler",
+    "minor",
+    "school child",
+    "school_child",
 }
 CHILD_ALIASES = {
-    "baby", "kid", "kids", "young child", "young_child",
-    "small child", "small_child", "children",
+    "baby",
+    "kid",
+    "kids",
+    "young child",
+    "young_child",
+    "small child",
+    "small_child",
+    "children",
 }
 PERSON_LABELS = {"person", "people", "human"}
 
@@ -54,10 +65,7 @@ def _norm(value: Any) -> str:
 
 def _yolo_confidence(detection: Mapping[str, Any]) -> float:
     return _clamp(
-        detection.get("confidence")
-        or detection.get("score")
-        or detection.get("probability")
-        or 0.0
+        detection.get("confidence") or detection.get("score") or detection.get("probability") or 0.0
     )
 
 
@@ -74,8 +82,8 @@ def _yolo_label(detection: Mapping[str, Any]) -> str:
 def _max_yolo_scores(
     yolo_detections: Sequence[Mapping[str, Any]],
 ) -> tuple[float, float]:
-    child_terms = {_norm(l) for l in CHILD_LABELS | CHILD_ALIASES}
-    person_terms = {_norm(l) for l in PERSON_LABELS}
+    child_terms = {_norm(lbl) for lbl in CHILD_LABELS | CHILD_ALIASES}
+    person_terms = {_norm(lbl) for lbl in PERSON_LABELS}
 
     child_score = person_score = 0.0
     for det in yolo_detections:
@@ -92,8 +100,19 @@ def _max_yolo_scores(
 
 
 CHILD_KEY_TERMS = {
-    "child", "infant", "toddler", "minor", "baby", "kid", "kids", "children",
-    "underage", "juvenile", "abuse", "exploit", "school",
+    "child",
+    "infant",
+    "toddler",
+    "minor",
+    "baby",
+    "kid",
+    "kids",
+    "children",
+    "underage",
+    "juvenile",
+    "abuse",
+    "exploit",
+    "school",
 }
 
 
@@ -116,11 +135,7 @@ def _flatten_child_scores(scores: Any) -> dict[str, float]:
                 pass
 
     # Keep only keys that contain a child-related term
-    return {
-        k: v
-        for k, v in flat.items()
-        if any(term in _norm(k) for term in CHILD_KEY_TERMS)
-    }
+    return {k: v for k, v in flat.items() if any(term in _norm(k) for term in CHILD_KEY_TERMS)}
 
 
 def _max_clip_child_score(clip_child_scores: Any) -> float:
@@ -152,9 +167,7 @@ def analyze_child_safety(
     # Person detections get a low weight (0.15) because temple carvings/statues
     # are routinely classified as "person" by general-purpose YOLO models.
     weak_person_presence = yolo_person_score * 0.25
-    child_presence_score = _clamp(
-        max(yolo_child_score, clip_child_score, weak_person_presence)
-    )
+    child_presence_score = _clamp(max(yolo_child_score, clip_child_score, weak_person_presence))
 
     # ── child_safety_score ────────────────────────────────────────────────────
     # Spec formula: max(a*0.85, b*0.60, agreement*0.95)

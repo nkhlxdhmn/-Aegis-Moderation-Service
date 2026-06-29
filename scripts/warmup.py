@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 if __name__ == "__main__":
     from backend.model_warmup import warmup_models
+
     try:
         warmup_models()
         print("Warmup complete — all models are ready.")

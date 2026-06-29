@@ -49,14 +49,14 @@ except ImportError:
     logger.debug("prometheus_client not installed — using no-op metric stubs")
 
     class _NoopCtx:
-        def __enter__(self) -> "_NoopCtx":
+        def __enter__(self) -> _NoopCtx:
             return self
 
         def __exit__(self, *_: object) -> None:
             pass
 
     class _Noop:
-        def labels(self, **_kw: object) -> "_Noop":
+        def labels(self, **_kw: object) -> _Noop:
             return self
 
         def inc(self, *_a: object, **_kw: object) -> None:

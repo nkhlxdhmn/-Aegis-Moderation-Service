@@ -20,126 +20,126 @@ Tier 0 hard-rejects:
 import logging
 
 # â”€â”€ Per-category thresholds (Phase 3 â€” false-positive reduction) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-ADULT_REJECT_THRESHOLD       = 0.45   # lowered: no LLM safety net
-HERITAGE_REVIEW_THRESHOLD    = 0.50
-CONTENT_QUALITY_THRESHOLD    = 0.35
-CHILD_SAFETY_THRESHOLD       = 0.30   # lowered: flag earlier
+ADULT_REJECT_THRESHOLD = 0.45  # lowered: no LLM safety net
+HERITAGE_REVIEW_THRESHOLD = 0.50
+CONTENT_QUALITY_THRESHOLD = 0.35
+CHILD_SAFETY_THRESHOLD = 0.30  # lowered: flag earlier
 CHILD_SAFETY_REVIEW_THRESHOLD = 0.45  # lowered: route to review sooner
-TERRORISM_THRESHOLD          = 0.50
-DRUG_TRAFFICKING_THRESHOLD   = 0.50
-HUMAN_TRAFFICKING_THRESHOLD  = 0.50
-VIOLENCE_SELF_HARM_THRESHOLD = 0.45   # lowered: catch borderline violence
-WEAPON_THRESHOLD             = 0.45   # lowered: catch borderline weapons/guns
-BLOOD_THRESHOLD              = 0.45   # lowered
-SELF_HARM_THRESHOLD          = 0.35   # lowered: suicide/self-harm very sensitive
-PRIVACY_THRESHOLD            = 0.55
-FRAUD_THRESHOLD              = 0.55
-HATE_SPEECH_THRESHOLD        = 0.55
-HARASSMENT_THRESHOLD         = 0.55
-PROMOTION_THRESHOLD          = 0.20   # any single promo phrase â†’ UNDER_REVIEW
+TERRORISM_THRESHOLD = 0.50
+DRUG_TRAFFICKING_THRESHOLD = 0.50
+HUMAN_TRAFFICKING_THRESHOLD = 0.50
+VIOLENCE_SELF_HARM_THRESHOLD = 0.45  # lowered: catch borderline violence
+WEAPON_THRESHOLD = 0.45  # lowered: catch borderline weapons/guns
+BLOOD_THRESHOLD = 0.45  # lowered
+SELF_HARM_THRESHOLD = 0.35  # lowered: suicide/self-harm very sensitive
+PRIVACY_THRESHOLD = 0.55
+FRAUD_THRESHOLD = 0.55
+HATE_SPEECH_THRESHOLD = 0.55
+HARASSMENT_THRESHOLD = 0.55
+PROMOTION_THRESHOLD = 0.20  # any single promo phrase â†’ UNDER_REVIEW
 
 # â”€â”€ Tier 0 thresholds â€” hard rejects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 # NSFW / pornographic content
-EXPLICIT_NSFW_THRESHOLD       = 0.60   # lowered: flag nudity earlier
-SECONDARY_ADULT_THRESHOLD     = 0.45   # lowered
-SECONDARY_COMPANION_THRESHOLD = 0.30   # lowered
-VISUAL_EXPLICIT_BOOST         = 0.10
+EXPLICIT_NSFW_THRESHOLD = 0.60  # lowered: flag nudity earlier
+SECONDARY_ADULT_THRESHOLD = 0.45  # lowered
+SECONDARY_COMPANION_THRESHOLD = 0.30  # lowered
+VISUAL_EXPLICIT_BOOST = 0.10
 
 # Violence / dangerous content
-VIOLENCE_HARD_THRESHOLD       = 0.65   # lowered: catch high-confidence violence
-GORE_HARD_THRESHOLD           = 0.60   # lowered
-WEAPON_HARD_THRESHOLD         = 0.60   # lowered: guns flagged at 60%
-WEAPON_VIOLENCE_WPN_THRESHOLD = 0.40   # lowered
-WEAPON_VIOLENCE_VIO_THRESHOLD = 0.35   # lowered
-WEAPON_GORE_WPN_THRESHOLD     = 0.35   # lowered
-WEAPON_GORE_BLD_THRESHOLD     = 0.35   # lowered
-VIOLENT_GORE_VIO_THRESHOLD    = 0.35   # lowered
-VIOLENT_GORE_BLD_THRESHOLD    = 0.35   # lowered
-SELF_HARM_HARD_THRESHOLD      = 0.45   # lowered: suicide/self-harm critical
+VIOLENCE_HARD_THRESHOLD = 0.65  # lowered: catch high-confidence violence
+GORE_HARD_THRESHOLD = 0.60  # lowered
+WEAPON_HARD_THRESHOLD = 0.60  # lowered: guns flagged at 60%
+WEAPON_VIOLENCE_WPN_THRESHOLD = 0.40  # lowered
+WEAPON_VIOLENCE_VIO_THRESHOLD = 0.35  # lowered
+WEAPON_GORE_WPN_THRESHOLD = 0.35  # lowered
+WEAPON_GORE_BLD_THRESHOLD = 0.35  # lowered
+VIOLENT_GORE_VIO_THRESHOLD = 0.35  # lowered
+VIOLENT_GORE_BLD_THRESHOLD = 0.35  # lowered
+SELF_HARM_HARD_THRESHOLD = 0.45  # lowered: suicide/self-harm critical
 
 # Promotion / spam hard reject
-PROMOTION_HARD_THRESHOLD      = 0.30   # 1+ promo phrase â†’ immediate REJECT
-SOCIAL_MEDIA_HARD_THRESHOLD   = 0.30   # 1 social phrase (follow me, f4fâ€¦) â†’ REJECT
-MARKETING_KEYWORD_MIN_COUNT   = 1.0    # any single marketing keyword â†’ REJECT
-COURSE_PROMOTION_THRESHOLD    = 0.10   # any course promotion phrase â†’ REJECT
-PHONE_NUMBER_REJECT_THRESHOLD = 0.35   # phone number in image â†’ REJECT
+PROMOTION_HARD_THRESHOLD = 0.30  # 1+ promo phrase â†’ immediate REJECT
+SOCIAL_MEDIA_HARD_THRESHOLD = 0.30  # 1 social phrase (follow me, f4fâ€¦) â†’ REJECT
+MARKETING_KEYWORD_MIN_COUNT = 1.0  # any single marketing keyword â†’ REJECT
+COURSE_PROMOTION_THRESHOLD = 0.10  # any course promotion phrase â†’ REJECT
+PHONE_NUMBER_REJECT_THRESHOLD = 0.35  # phone number in image â†’ REJECT
 SOCIAL_HANDLE_REJECT_THRESHOLD = 0.25  # @handle in image â†’ REJECT
-URL_REJECT_THRESHOLD          = 0.35   # URL in image â†’ REJECT
-QR_CODE_REJECT_THRESHOLD      = 0.50   # QR code detected â†’ REJECT
+URL_REJECT_THRESHOLD = 0.35  # URL in image â†’ REJECT
+QR_CODE_REJECT_THRESHOLD = 0.50  # QR code detected â†’ REJECT
 
 # Tier 0-D: Hate speech / political rejection thresholds
-ML_HATE_REJECT_THRESHOLD      = 0.70   # ML hate score â†’ immediate REJECT
-ML_TOXICITY_REJECT_THRESHOLD  = 0.75   # ML toxicity â†’ immediate REJECT
-ML_HATE_REVIEW_THRESHOLD      = 0.50   # ML hate score â†’ UNDER_REVIEW
-HATE_SPEECH_RULE_THRESHOLD    = 0.55   # rule-based hate â†’ REJECT
-POLITICAL_SCORE_THRESHOLD     = 0.55   # lowered: catches more political content
-POLITICAL_CAMPAIGN_THRESHOLD  = 0.45   # lowered
+ML_HATE_REJECT_THRESHOLD = 0.70  # ML hate score â†’ immediate REJECT
+ML_TOXICITY_REJECT_THRESHOLD = 0.75  # ML toxicity â†’ immediate REJECT
+ML_HATE_REVIEW_THRESHOLD = 0.50  # ML hate score â†’ UNDER_REVIEW
+HATE_SPEECH_RULE_THRESHOLD = 0.55  # rule-based hate â†’ REJECT
+POLITICAL_SCORE_THRESHOLD = 0.55  # lowered: catches more political content
+POLITICAL_CAMPAIGN_THRESHOLD = 0.45  # lowered
 
 # Video temporal safety
-VIDEO_UNSAFE_RATIO_THRESHOLD  = 0.15   # lowered
-VIDEO_CONSECUTIVE_THRESHOLD   = 3.0    # lowered
+VIDEO_UNSAFE_RATIO_THRESHOLD = 0.15  # lowered
+VIDEO_CONSECUTIVE_THRESHOLD = 3.0  # lowered
 
 # Heritage exception: content with heritage_score â‰¥ this triggers UNDER_REVIEW
 # instead of auto-REJECT for violence/weapon/self-harm/adult categories.
-HERITAGE_EXCEPTION_THRESHOLD = 0.55   # raised: require stronger heritage signal
+HERITAGE_EXCEPTION_THRESHOLD = 0.55  # raised: require stronger heritage signal
 
 # Ensemble risk: above this â†’ UNDER_REVIEW
-ENSEMBLE_RISK_THRESHOLD      = 0.45   # lowered significantly: no LLM catch-all
+ENSEMBLE_RISK_THRESHOLD = 0.45  # lowered significantly: no LLM catch-all
 
 # Heritage score above which weapon/violence/child checks are softened
 CULTURAL_PROTECTION_THRESHOLD = 0.65  # raised: require stronger heritage signal
 
 # Heritage score + elevated risk (but not overwhelming) â†’ disagree â†’ review
-_DISAGREE_RISK_LOW  = 0.50   # risk must be > this to flag disagreement
-_DISAGREE_RISK_HIGH = 0.90   # risk must be < this (overwhelming â†’ suppress disagree)
-_DISAGREE_HERITAGE  = 0.50   # heritage must be > this to flag disagreement
+_DISAGREE_RISK_LOW = 0.50  # risk must be > this to flag disagreement
+_DISAGREE_RISK_HIGH = 0.90  # risk must be < this (overwhelming â†’ suppress disagree)
+_DISAGREE_HERITAGE = 0.50  # heritage must be > this to flag disagreement
 
 # â”€â”€ Reason codes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-CHILD_SAFETY_ALERT          = "CHILD_SAFETY_ALERT"
-TERRORISM_CONTENT           = "TERRORISM_CONTENT"
-DRUG_TRAFFICKING_CONTENT    = "DRUG_TRAFFICKING_CONTENT"
-HUMAN_TRAFFICKING_CONTENT   = "HUMAN_TRAFFICKING_CONTENT"
-VIOLENCE_CONTENT            = "VIOLENCE_CONTENT"
-SELF_HARM_CONTENT           = "SELF_HARM_CONTENT"
-WEAPON_CONTENT              = "WEAPON_CONTENT"
-NSFW_CONTENT                = "NSFW_CONTENT"
-PRIVACY_VIOLATION           = "PRIVACY_VIOLATION"
-FRAUD_CONTENT               = "FRAUD_CONTENT"
-HATE_SPEECH                 = "HATE_SPEECH"
-HARASSMENT                  = "HARASSMENT"
-PROMOTION_CONTENT           = "PROMOTION_CONTENT"
-LOW_CONTENT_QUALITY         = "LOW_CONTENT_QUALITY"
-HERITAGE_REVIEW             = "HERITAGE_REVIEW"
-PIPELINE_ERROR              = "PIPELINE_ERROR"
-ENSEMBLE_REVIEW             = "ENSEMBLE_REVIEW"
-DISAGREE_CONTENT            = "DISAGREE_CONTENT"
-HIGH_UNCERTAINTY            = "HIGH_UNCERTAINTY"
-LLM_REJECTION               = "LLM_REJECTION"
-APPROVED                    = "APPROVED"
+CHILD_SAFETY_ALERT = "CHILD_SAFETY_ALERT"
+TERRORISM_CONTENT = "TERRORISM_CONTENT"
+DRUG_TRAFFICKING_CONTENT = "DRUG_TRAFFICKING_CONTENT"
+HUMAN_TRAFFICKING_CONTENT = "HUMAN_TRAFFICKING_CONTENT"
+VIOLENCE_CONTENT = "VIOLENCE_CONTENT"
+SELF_HARM_CONTENT = "SELF_HARM_CONTENT"
+WEAPON_CONTENT = "WEAPON_CONTENT"
+NSFW_CONTENT = "NSFW_CONTENT"
+PRIVACY_VIOLATION = "PRIVACY_VIOLATION"
+FRAUD_CONTENT = "FRAUD_CONTENT"
+HATE_SPEECH = "HATE_SPEECH"
+HARASSMENT = "HARASSMENT"
+PROMOTION_CONTENT = "PROMOTION_CONTENT"
+LOW_CONTENT_QUALITY = "LOW_CONTENT_QUALITY"
+HERITAGE_REVIEW = "HERITAGE_REVIEW"
+PIPELINE_ERROR = "PIPELINE_ERROR"
+ENSEMBLE_REVIEW = "ENSEMBLE_REVIEW"
+DISAGREE_CONTENT = "DISAGREE_CONTENT"
+HIGH_UNCERTAINTY = "HIGH_UNCERTAINTY"
+LLM_REJECTION = "LLM_REJECTION"
+APPROVED = "APPROVED"
 
 # â”€â”€ Tier 0 reason codes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 EXPLICIT_PORNOGRAPHIC_CONTENT = "EXPLICIT_PORNOGRAPHIC_CONTENT"
-HIGH_RISK_EXPLICIT_CONTENT    = "HIGH_RISK_EXPLICIT_CONTENT"
-HIGH_CONFIDENCE_VIOLENCE      = "HIGH_CONFIDENCE_VIOLENCE"
-GORE_CONTENT                  = "GORE_CONTENT"
-DANGEROUS_WEAPON_CONTENT      = "DANGEROUS_WEAPON_CONTENT"
-WEAPON_VIOLENCE               = "WEAPON_VIOLENCE"
-WEAPON_GORE                   = "WEAPON_GORE"
-VIOLENT_GORE                  = "VIOLENT_GORE"
-ANIMAL_CRUELTY                = "ANIMAL_CRUELTY"
-HUMAN_KILLING                 = "HUMAN_KILLING"
-PROMOTIONAL_SPAM              = "PROMOTIONAL_SPAM"
-MARKETING_CONTENT             = "MARKETING_CONTENT"
-COURSE_PROMOTION              = "COURSE_PROMOTION"
-POLITICAL_CAMPAIGN            = "POLITICAL_CAMPAIGN"
-HATE_SPEECH_REJECTION         = "HATE_SPEECH_REJECTION"
-TOXIC_CONTENT                 = "TOXIC_CONTENT"
-QR_CODE_PROMOTION             = "QR_CODE_PROMOTION"
-PHONE_NUMBER_SPAM             = "PHONE_NUMBER_SPAM"
-SOCIAL_HANDLE_SPAM            = "SOCIAL_HANDLE_SPAM"
-URL_IN_IMAGE                  = "URL_IN_IMAGE"
-VIDEO_UNSAFE_FRAMES           = "VIDEO_UNSAFE_FRAMES"
+HIGH_RISK_EXPLICIT_CONTENT = "HIGH_RISK_EXPLICIT_CONTENT"
+HIGH_CONFIDENCE_VIOLENCE = "HIGH_CONFIDENCE_VIOLENCE"
+GORE_CONTENT = "GORE_CONTENT"
+DANGEROUS_WEAPON_CONTENT = "DANGEROUS_WEAPON_CONTENT"
+WEAPON_VIOLENCE = "WEAPON_VIOLENCE"
+WEAPON_GORE = "WEAPON_GORE"
+VIOLENT_GORE = "VIOLENT_GORE"
+ANIMAL_CRUELTY = "ANIMAL_CRUELTY"
+HUMAN_KILLING = "HUMAN_KILLING"
+PROMOTIONAL_SPAM = "PROMOTIONAL_SPAM"
+MARKETING_CONTENT = "MARKETING_CONTENT"
+COURSE_PROMOTION = "COURSE_PROMOTION"
+POLITICAL_CAMPAIGN = "POLITICAL_CAMPAIGN"
+HATE_SPEECH_REJECTION = "HATE_SPEECH_REJECTION"
+TOXIC_CONTENT = "TOXIC_CONTENT"
+QR_CODE_PROMOTION = "QR_CODE_PROMOTION"
+PHONE_NUMBER_SPAM = "PHONE_NUMBER_SPAM"
+SOCIAL_HANDLE_SPAM = "SOCIAL_HANDLE_SPAM"
+URL_IN_IMAGE = "URL_IN_IMAGE"
+VIDEO_UNSAFE_FRAMES = "VIDEO_UNSAFE_FRAMES"
 
 # Uncertainty threshold â€” above this score routes to human review
 UNCERTAINTY_REVIEW_THRESHOLD = 0.35
@@ -178,46 +178,46 @@ def _has_model_disagreement(
 def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     """Return (decision, reason_code, human_reason)."""
 
-    child_safety_score      = _score(scores, "child_safety_score")
-    terrorism_score         = _score(scores, "terrorism_score")
-    drug_trafficking_score  = _score(scores, "drug_trafficking_score")
+    child_safety_score = _score(scores, "child_safety_score")
+    terrorism_score = _score(scores, "terrorism_score")
+    drug_trafficking_score = _score(scores, "drug_trafficking_score")
     human_trafficking_score = _score(scores, "human_trafficking_score")
     violence_self_harm_score = _score(scores, "violence_self_harm_score")
-    weapon_score            = _score(scores, "weapon_score")
-    blood_score             = _score(scores, "blood_score")
-    self_harm_score         = max(
+    weapon_score = _score(scores, "weapon_score")
+    blood_score = _score(scores, "blood_score")
+    self_harm_score = max(
         _score(scores, "self_harm_score"),
         _score(scores, "self_harm_text_score"),
     )
-    adult_score             = _score(scores, "adult_score")
-    heritage_score          = _score(scores, "heritage_score")
-    pii_score               = _score(scores, "pii_score")
-    fraud_score             = _score(scores, "fraud_score")
-    hate_speech_score       = _score(scores, "hate_speech_score")
-    harassment_score        = _score(scores, "harassment_score")
-    promotion_score         = _score(scores, "promotion_score")
-    content_quality_score   = _score(scores, "content_quality_score")
-    ensemble_risk_score     = _score(scores, "ensemble_risk_score")
-    uncertainty_score       = _score(scores, "uncertainty_score")
+    adult_score = _score(scores, "adult_score")
+    heritage_score = _score(scores, "heritage_score")
+    pii_score = _score(scores, "pii_score")
+    fraud_score = _score(scores, "fraud_score")
+    hate_speech_score = _score(scores, "hate_speech_score")
+    harassment_score = _score(scores, "harassment_score")
+    promotion_score = _score(scores, "promotion_score")
+    content_quality_score = _score(scores, "content_quality_score")
+    ensemble_risk_score = _score(scores, "ensemble_risk_score")
+    uncertainty_score = _score(scores, "uncertainty_score")
 
     # â”€â”€ Tier 0 supplemental inputs (populated by upstream pipeline) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    nsfw_score               = _score(scores, "nsfw_score")
-    visual_explicit          = _score(scores, "visual_explicit_indicator")
-    animal_cruelty_text      = _score(scores, "animal_cruelty_text_score")
-    human_killing_text       = _score(scores, "human_killing_text_score")
-    social_media_score_      = _score(scores, "social_media_score")
-    marketing_keyword_count  = _score(scores, "marketing_keyword_count")
-    course_promotion_score_  = _score(scores, "course_promotion_score")
-    phone_number_score_      = _score(scores, "phone_number_score")
-    social_handle_score_     = _score(scores, "social_handle_score")
-    url_score_               = _score(scores, "url_score")
-    qr_code_score_           = _score(scores, "qr_code_score")
-    ml_toxicity_score_       = _score(scores, "ml_toxicity_score")
-    ml_hate_score_           = _score(scores, "ml_hate_score")
-    political_score          = _score(scores, "political_score")
+    nsfw_score = _score(scores, "nsfw_score")
+    visual_explicit = _score(scores, "visual_explicit_indicator")
+    animal_cruelty_text = _score(scores, "animal_cruelty_text_score")
+    human_killing_text = _score(scores, "human_killing_text_score")
+    social_media_score_ = _score(scores, "social_media_score")
+    marketing_keyword_count = _score(scores, "marketing_keyword_count")
+    course_promotion_score_ = _score(scores, "course_promotion_score")
+    phone_number_score_ = _score(scores, "phone_number_score")
+    social_handle_score_ = _score(scores, "social_handle_score")
+    url_score_ = _score(scores, "url_score")
+    qr_code_score_ = _score(scores, "qr_code_score")
+    ml_toxicity_score_ = _score(scores, "ml_toxicity_score")
+    ml_hate_score_ = _score(scores, "ml_hate_score")
+    political_score = _score(scores, "political_score")
     political_campaign_score = _score(scores, "political_campaign_score")
-    video_unsafe_ratio       = _score(scores, "video_unsafe_frame_ratio")
-    video_consecutive        = _score(scores, "video_consecutive_unsafe_frames")
+    video_unsafe_ratio = _score(scores, "video_unsafe_frame_ratio")
+    video_consecutive = _score(scores, "video_consecutive_unsafe_frames")
 
     # â”€â”€ Tier 0-A: Hard NSFW / Pornographic reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Fires before Llama approval â€” explicit pornography has no approval path
@@ -229,7 +229,10 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if adult_effective >= EXPLICIT_NSFW_THRESHOLD:
         logger.warning(
             "Tier-0A NSFW hard reject | adult_effective=%.3f adult=%.3f nsfw=%.3f decision=REJECTED reason=%s",
-            adult_effective, adult_score, nsfw_score, EXPLICIT_PORNOGRAPHIC_CONTENT,
+            adult_effective,
+            adult_score,
+            nsfw_score,
+            EXPLICIT_PORNOGRAPHIC_CONTENT,
         )
         return (
             "REJECTED",
@@ -246,8 +249,13 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         logger.warning(
             "Tier-0A secondary explicit reject | adult=%.3f nsfw=%.3f child=%.3f "
             "violence=%.3f weapon=%.3f blood=%.3f decision=REJECTED reason=%s",
-            adult_score, nsfw_score, child_safety_score, violence_self_harm_score,
-            weapon_score, blood_score, HIGH_RISK_EXPLICIT_CONTENT,
+            adult_score,
+            nsfw_score,
+            child_safety_score,
+            violence_self_harm_score,
+            weapon_score,
+            blood_score,
+            HIGH_RISK_EXPLICIT_CONTENT,
         )
         return (
             "REJECTED",
@@ -257,16 +265,18 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
 
     # â”€â”€ Tier 0-B: Hard Violence / Dangerous content reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Fires before Llama approval â€” extreme violence bypasses heritage exception.
-    violence_effective = max(
-        violence_self_harm_score, blood_score, weapon_score, self_harm_score
-    )
+    violence_effective = max(violence_self_harm_score, blood_score, weapon_score, self_harm_score)
 
     if violence_self_harm_score >= VIOLENCE_HARD_THRESHOLD:
         logger.warning(
             "Tier-0B violence hard reject | effective=%.3f violence=%.3f blood=%.3f "
             "weapon=%.3f self_harm=%.3f decision=REJECTED reason=%s",
-            violence_effective, violence_self_harm_score, blood_score,
-            weapon_score, self_harm_score, HIGH_CONFIDENCE_VIOLENCE,
+            violence_effective,
+            violence_self_harm_score,
+            blood_score,
+            weapon_score,
+            self_harm_score,
+            HIGH_CONFIDENCE_VIOLENCE,
         )
         return (
             "REJECTED",
@@ -278,8 +288,11 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         logger.warning(
             "Tier-0B gore hard reject | blood=%.3f violence=%.3f weapon=%.3f "
             "self_harm=%.3f decision=REJECTED reason=%s",
-            blood_score, violence_self_harm_score, weapon_score,
-            self_harm_score, GORE_CONTENT,
+            blood_score,
+            violence_self_harm_score,
+            weapon_score,
+            self_harm_score,
+            GORE_CONTENT,
         )
         return (
             "REJECTED",
@@ -291,8 +304,11 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         logger.warning(
             "Tier-0B weapon hard reject | weapon=%.3f violence=%.3f blood=%.3f "
             "self_harm=%.3f decision=REJECTED reason=%s",
-            weapon_score, violence_self_harm_score, blood_score,
-            self_harm_score, DANGEROUS_WEAPON_CONTENT,
+            weapon_score,
+            violence_self_harm_score,
+            blood_score,
+            self_harm_score,
+            DANGEROUS_WEAPON_CONTENT,
         )
         return (
             "REJECTED",
@@ -311,7 +327,9 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     ):
         logger.warning(
             "Tier-0B weapon+violence reject | weapon=%.3f violence=%.3f decision=REJECTED reason=%s",
-            weapon_score, violence_self_harm_score, WEAPON_VIOLENCE,
+            weapon_score,
+            violence_self_harm_score,
+            WEAPON_VIOLENCE,
         )
         return (
             "REJECTED",
@@ -326,7 +344,9 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     ):
         logger.warning(
             "Tier-0B weapon+gore reject | weapon=%.3f blood=%.3f decision=REJECTED reason=%s",
-            weapon_score, blood_score, WEAPON_GORE,
+            weapon_score,
+            blood_score,
+            WEAPON_GORE,
         )
         return (
             "REJECTED",
@@ -341,7 +361,9 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     ):
         logger.warning(
             "Tier-0B violent gore reject | violence=%.3f blood=%.3f decision=REJECTED reason=%s",
-            violence_self_harm_score, blood_score, VIOLENT_GORE,
+            violence_self_harm_score,
+            blood_score,
+            VIOLENT_GORE,
         )
         return (
             "REJECTED",
@@ -352,7 +374,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if animal_cruelty_text >= 0.5:
         logger.warning(
             "Tier-0B animal cruelty reject | animal_cruelty_text=%.3f decision=REJECTED reason=%s",
-            animal_cruelty_text, ANIMAL_CRUELTY,
+            animal_cruelty_text,
+            ANIMAL_CRUELTY,
         )
         return (
             "REJECTED",
@@ -363,7 +386,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if human_killing_text >= 0.5:
         logger.warning(
             "Tier-0B human killing reject | human_killing_text=%.3f decision=REJECTED reason=%s",
-            human_killing_text, HUMAN_KILLING,
+            human_killing_text,
+            HUMAN_KILLING,
         )
         return (
             "REJECTED",
@@ -374,7 +398,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if self_harm_score >= SELF_HARM_HARD_THRESHOLD:
         logger.warning(
             "Tier-0B self-harm hard reject | self_harm=%.3f decision=REJECTED reason=%s",
-            self_harm_score, SELF_HARM_CONTENT,
+            self_harm_score,
+            SELF_HARM_CONTENT,
         )
         return (
             "REJECTED",
@@ -386,7 +411,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if promotion_score >= PROMOTION_HARD_THRESHOLD:
         logger.warning(
             "Tier-0C promotion spam reject | promotion=%.3f decision=REJECTED reason=%s",
-            promotion_score, PROMOTIONAL_SPAM,
+            promotion_score,
+            PROMOTIONAL_SPAM,
         )
         return (
             "REJECTED",
@@ -408,7 +434,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if marketing_keyword_count >= MARKETING_KEYWORD_MIN_COUNT:
         logger.warning(
             "Tier-0C marketing keyword reject | keyword_count=%.0f decision=REJECTED reason=%s",
-            marketing_keyword_count, MARKETING_CONTENT,
+            marketing_keyword_count,
+            MARKETING_CONTENT,
         )
         return (
             "REJECTED",
@@ -419,7 +446,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if course_promotion_score_ >= COURSE_PROMOTION_THRESHOLD:
         logger.warning(
             "Tier-0C course promotion reject | course_score=%.3f decision=REJECTED reason=%s",
-            course_promotion_score_, COURSE_PROMOTION,
+            course_promotion_score_,
+            COURSE_PROMOTION,
         )
         return (
             "REJECTED",
@@ -433,7 +461,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     ):
         logger.warning(
             "Tier-0C political reject | political=%.3f campaign=%.3f",
-            political_score, political_campaign_score,
+            political_score,
+            political_campaign_score,
         )
         return (
             "REJECTED",
@@ -525,7 +554,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if video_unsafe_ratio >= VIDEO_UNSAFE_RATIO_THRESHOLD:
         logger.warning(
             "Tier-0D video unsafe ratio reject | ratio=%.3f decision=REJECTED reason=%s",
-            video_unsafe_ratio, VIDEO_UNSAFE_FRAMES,
+            video_unsafe_ratio,
+            VIDEO_UNSAFE_FRAMES,
         )
         return (
             "REJECTED",
@@ -537,7 +567,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     if video_consecutive >= VIDEO_CONSECUTIVE_THRESHOLD:
         logger.warning(
             "Tier-0D video consecutive unsafe reject | consecutive=%.0f decision=REJECTED reason=%s",
-            video_consecutive, VIDEO_UNSAFE_FRAMES,
+            video_consecutive,
+            VIDEO_UNSAFE_FRAMES,
         )
         return (
             "REJECTED",
@@ -553,18 +584,16 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     # are used in threshold comparisons inside this function.
     # Phase 5: child_safety_eval always equals raw child_safety_score (child dominance).
     _h = heritage_score > CULTURAL_PROTECTION_THRESHOLD
-    weapon_eval          = weapon_score * 0.70           if _h else weapon_score
-    blood_eval           = blood_score * 0.70            if _h else blood_score
-    violence_eval        = violence_self_harm_score * 0.70 if _h else violence_self_harm_score
-    self_harm_eval       = self_harm_score * 0.70        if _h else self_harm_score
-    child_safety_eval    = child_safety_score  # Phase 5: heritage never reduces child safety
+    weapon_eval = weapon_score * 0.70 if _h else weapon_score
+    blood_eval = blood_score * 0.70 if _h else blood_score
+    violence_eval = violence_self_harm_score * 0.70 if _h else violence_self_harm_score
+    self_harm_eval = self_harm_score * 0.70 if _h else self_harm_score
+    child_safety_eval = child_safety_score  # Phase 5: heritage never reduces child safety
 
     # Dual child-safety threshold: borderline effective scores add a confidence
     # penalty to the ensemble risk; high scores route to review.
     child_penalty = (
-        0.10
-        if CHILD_SAFETY_THRESHOLD <= child_safety_eval < CHILD_SAFETY_REVIEW_THRESHOLD
-        else 0.0
+        0.10 if CHILD_SAFETY_THRESHOLD <= child_safety_eval < CHILD_SAFETY_REVIEW_THRESHOLD else 0.0
     )
     effective_ensemble_risk = min(1.0, ensemble_risk_score + child_penalty)
 
@@ -707,9 +736,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     # â”€â”€ Tier 9: Disagreement detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Catches sub-threshold but elevated risk coexisting with high heritage,
     # e.g. mythological battle scenes, fire rituals, festival children.
-    if _has_model_disagreement(
-        child_safety_eval, violence_eval, weapon_eval, heritage_score
-    ):
+    if _has_model_disagreement(child_safety_eval, violence_eval, weapon_eval, heritage_score):
         return (
             "UNDER_REVIEW",
             DISAGREE_CONTENT,
@@ -751,7 +778,9 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         )
 
     if uncertainty_score >= 0.25:
-        logger.info("Tier-10 uncertainty gate â†’ UNDER_REVIEW (uncertainty=%.3f)", uncertainty_score)
+        logger.info(
+            "Tier-10 uncertainty gate â†’ UNDER_REVIEW (uncertainty=%.3f)", uncertainty_score
+        )
         return (
             "UNDER_REVIEW",
             HIGH_UNCERTAINTY,
@@ -779,4 +808,3 @@ def get_reason_code(scores: dict[str, float]) -> str:
 def decide_with_reason_code(scores: dict[str, float]) -> tuple[str, str, str]:
     """Return (decision, reason_code, human_reason)."""
     return _evaluate(scores)
-

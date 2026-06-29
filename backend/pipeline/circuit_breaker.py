@@ -10,7 +10,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +66,16 @@ class CircuitBreaker:
             self._failures += 1
             logger.warning(
                 "CircuitBreaker '%s': failure %d/%d",
-                self.name, self._failures, self.max_failures,
+                self.name,
+                self._failures,
+                self.max_failures,
             )
             if self._failures >= self.max_failures and self._opened_at is None:
                 self._opened_at = time.monotonic()
                 logger.error(
                     "CircuitBreaker '%s' OPENED — model disabled for %.0fs",
-                    self.name, self.cooldown_seconds,
+                    self.name,
+                    self.cooldown_seconds,
                 )
 
     def call(self, fn: Callable[[], T], fallback: T | None = None) -> T:
@@ -117,15 +121,24 @@ ocr_breaker = CircuitBreaker("ocr", max_failures=5, cooldown_seconds=60)
 blip_breaker = CircuitBreaker("blip", max_failures=5, cooldown_seconds=60)
 llama_breaker = CircuitBreaker("llama", max_failures=5, cooldown_seconds=60)
 qwen_breaker = CircuitBreaker("qwen", max_failures=5, cooldown_seconds=90)
-embedding_breaker  = CircuitBreaker("embedding",  max_failures=5, cooldown_seconds=60)
-toxicity_breaker          = CircuitBreaker("toxicity",          max_failures=3, cooldown_seconds=120)
-text_classifier_breaker   = CircuitBreaker("text_classifier",   max_failures=3, cooldown_seconds=120)
+embedding_breaker = CircuitBreaker("embedding", max_failures=5, cooldown_seconds=60)
+toxicity_breaker = CircuitBreaker("toxicity", max_failures=3, cooldown_seconds=120)
+text_classifier_breaker = CircuitBreaker("text_classifier", max_failures=3, cooldown_seconds=120)
 
 
 def all_statuses() -> list[dict[str, Any]]:
-    return [b.status() for b in (
-        nsfw_breaker, siglip_breaker, yolo_breaker,
-        ocr_breaker, blip_breaker, llama_breaker,
-        qwen_breaker, embedding_breaker, toxicity_breaker,
-        text_classifier_breaker,
-    )]
+    return [
+        b.status()
+        for b in (
+            nsfw_breaker,
+            siglip_breaker,
+            yolo_breaker,
+            ocr_breaker,
+            blip_breaker,
+            llama_breaker,
+            qwen_breaker,
+            embedding_breaker,
+            toxicity_breaker,
+            text_classifier_breaker,
+        )
+    ]

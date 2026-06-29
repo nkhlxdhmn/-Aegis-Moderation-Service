@@ -18,6 +18,7 @@ import threading
 def _vlm_device() -> str:
     return os.getenv("VLM_DEVICE", "cuda:0")
 
+
 logger = logging.getLogger(__name__)
 
 _warmup_lock = threading.Lock()
@@ -28,24 +29,28 @@ _last_error: str | None = None
 def load_nsfw() -> None:
     """Load OpenNSFW2 ViT-L on cuda:0."""
     from backend.pipeline import nsfw
+
     nsfw._get_state()
 
 
 def load_yolo() -> None:
     """Load YOLO11x on cuda:0."""
     from backend.pipeline import object_detector
+
     object_detector._get_state()
 
 
 def load_siglip() -> None:
     """Load SigLIP2 Large on cuda:0."""
     from backend.pipeline import clip_engine
+
     clip_engine._get_state()
 
 
 def load_surya() -> None:
     """Load Surya OCR (primary engine). Logs outcome; no-op if package absent."""
     from backend.pipeline.surya_ocr import load_surya as _load
+
     ok = _load()
     if ok:
         logger.info("Surya OCR loaded")
@@ -57,18 +62,21 @@ def load_ocr() -> None:
     """Warm the hybrid OCR engine (Surya primary + EasyOCR fallback)."""
     load_surya()
     from backend.pipeline.easyocr_engine import load_easyocr
+
     load_easyocr()
 
 
 def load_blip2() -> None:
     """Load BLIP image-captioning-large on VLM_DEVICE (default cuda:0)."""
     from backend.pipeline import vlm_engine
+
     vlm_engine._get_blip()
 
 
 def load_text_classifier() -> None:
     """Try to load the text abuse classifier.  No-op when MuRIL weights are absent."""
     from backend.pipeline import text_classifier
+
     text_classifier.load_text_classifier()
 
 
@@ -141,31 +149,37 @@ def model_status_detail() -> dict[str, str]:
     detail: dict[str, str] = {}
     try:
         from backend.pipeline import nsfw as _nsfw
+
         detail["nsfw"] = "loaded" if _nsfw._state is not None else "not_loaded"
     except Exception:
         detail["nsfw"] = "error"
     try:
         from backend.pipeline import clip_engine as _clip
+
         detail["siglip"] = "loaded" if _clip._state is not None else "not_loaded"
     except Exception:
         detail["siglip"] = "error"
     try:
         from backend.pipeline import object_detector as _yolo
+
         detail["yolo"] = "loaded" if _yolo._state is not None else "not_loaded"
     except Exception:
         detail["yolo"] = "error"
     try:
         from backend.pipeline.surya_ocr import is_available as _surya_ok
+
         detail["ocr_surya"] = "loaded" if _surya_ok() else "not_loaded"
     except Exception:
         detail["ocr_surya"] = "error"
     try:
         from backend.pipeline.easyocr_engine import is_available as _easyocr_ok
+
         detail["ocr_easyocr"] = "loaded" if _easyocr_ok() else "not_loaded"
     except Exception:
         detail["ocr_easyocr"] = "error"
     try:
         from backend.pipeline import vlm_engine as _vlm
+
         detail["blip"] = "loaded" if _vlm._blip_state is not None else "not_loaded"
         detail["llama"] = "disabled"  # Llama removed; rule-based decision engine active
     except Exception:
@@ -173,6 +187,7 @@ def model_status_detail() -> dict[str, str]:
         detail["llama"] = "error"
     try:
         from backend.pipeline import ml_toxicity as _tox
+
         if getattr(_tox, "_DISABLED", False):
             detail["ml_toxicity"] = "disabled"
         elif getattr(_tox, "_pipeline", None) is not None:
@@ -183,6 +198,7 @@ def model_status_detail() -> dict[str, str]:
         detail["ml_toxicity"] = "error"
     try:
         from backend.pipeline import text_classifier as _tc
+
         if _tc._classifier_disabled:
             detail["text_classifier"] = "disabled"
         elif _tc._classifier_pipeline is not None:

@@ -49,9 +49,7 @@ def load_surya() -> bool:
             return True
 
         except ImportError:
-            logger.info(
-                "surya package not installed — Surya OCR unavailable, fallback enabled"
-            )
+            logger.info("surya package not installed — Surya OCR unavailable, fallback enabled")
             return False
 
         except Exception:
@@ -90,9 +88,7 @@ def run_surya_ocr(image_path: str) -> list[str]:
                     continue
                 if getattr(block, "confidence", 1.0) < _MIN_CONFIDENCE:
                     continue
-                text = re.sub(
-                    r"<[^>]+>", " ", getattr(block, "html", "") or ""
-                ).strip()
+                text = re.sub(r"<[^>]+>", " ", getattr(block, "html", "") or "").strip()
                 if text:
                     fragments.append(text)
 

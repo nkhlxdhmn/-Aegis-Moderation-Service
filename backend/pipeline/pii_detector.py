@@ -6,9 +6,9 @@ when the package is available. It does not make moderation decisions.
 
 from __future__ import annotations
 
-from functools import lru_cache
 import logging
 import re
+from functools import lru_cache
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -67,10 +67,7 @@ def _valid_aadhaar_candidate(value: str) -> bool:
 def _has_aadhaar(text: str) -> bool:
     """Detect Aadhaar numbers with light false-positive filtering."""
 
-    return any(
-        _valid_aadhaar_candidate(match.group(0))
-        for match in AADHAAR_PATTERN.finditer(text)
-    )
+    return any(_valid_aadhaar_candidate(match.group(0)) for match in AADHAAR_PATTERN.finditer(text))
 
 
 def _has_bank_account(text: str) -> bool:
@@ -144,9 +141,7 @@ def _regex_flags(text: str) -> dict[str, bool]:
         "phone_detected": bool(PHONE_PATTERN.search(text)),
         "email_detected": bool(EMAIL_PATTERN.search(text)),
         "bank_info_detected": bool(
-            UPI_PATTERN.search(text)
-            or IFSC_PATTERN.search(text)
-            or _has_bank_account(text)
+            UPI_PATTERN.search(text) or IFSC_PATTERN.search(text) or _has_bank_account(text)
         ),
         "address_detected": _has_address(text),
     }
@@ -176,8 +171,7 @@ def analyze_pii(ocr_text: str | None, caption: str | None) -> dict[str, Any]:
     regex_flags = _regex_flags(text)
     presidio_flags = _presidio_flags(text)
     combined_flags = {
-        key: bool(regex_flags.get(key) or presidio_flags.get(key))
-        for key in regex_flags
+        key: bool(regex_flags.get(key) or presidio_flags.get(key)) for key in regex_flags
     }
 
     result = {

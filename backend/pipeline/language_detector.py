@@ -36,20 +36,35 @@ LANG_NAMES: dict[str, str] = {
     "ar": "Arabic",
 }
 
-INDIC_LANGS: frozenset[str] = frozenset({
-    "hi", "mr", "ta", "te", "kn", "bn", "pa", "gu", "ur",
-    "as", "sa", "ne", "or", "ml", "sd",
-})
+INDIC_LANGS: frozenset[str] = frozenset(
+    {
+        "hi",
+        "mr",
+        "ta",
+        "te",
+        "kn",
+        "bn",
+        "pa",
+        "gu",
+        "ur",
+        "as",
+        "sa",
+        "ne",
+        "or",
+        "ml",
+        "sd",
+    }
+)
 
 # Unicode ranges used as a fast script-detection fallback when langdetect fails
 _DEVANAGARI = re.compile(r"[ऀ-ॿ]")
-_ARABIC     = re.compile(r"[؀-ۿ]")      # covers Urdu
-_BENGALI    = re.compile(r"[ঀ-৿]")
-_TAMIL      = re.compile(r"[஀-௿]")
-_TELUGU     = re.compile(r"[ఀ-౿]")
-_KANNADA    = re.compile(r"[ಀ-೿]")
-_GUJARATI   = re.compile(r"[઀-૿]")
-_GURMUKHI   = re.compile(r"[਀-੿]")      # Punjabi
+_ARABIC = re.compile(r"[؀-ۿ]")  # covers Urdu
+_BENGALI = re.compile(r"[ঀ-৿]")
+_TAMIL = re.compile(r"[஀-௿]")
+_TELUGU = re.compile(r"[ఀ-౿]")
+_KANNADA = re.compile(r"[ಀ-೿]")
+_GUJARATI = re.compile(r"[઀-૿]")
+_GURMUKHI = re.compile(r"[਀-੿]")  # Punjabi
 
 
 def _unicode_fallback(text: str) -> str | None:
@@ -78,7 +93,8 @@ def detect(text: str | None) -> str:
         return "en"
 
     try:
-        from langdetect import detect as _detect, LangDetectException
+        from langdetect import detect as _detect
+
         lang = _detect(text)
         logger.debug("langdetect: %s", lang)
         return lang

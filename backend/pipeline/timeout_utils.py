@@ -14,8 +14,10 @@ with shared GPU model state and is not done here.
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
+from typing import TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +29,15 @@ T = TypeVar("T")
 # Subsequent warm calls are much faster (2-10s) but the timeout is not adjusted
 # dynamically, so we keep it generous to avoid false timeouts under load.
 TIMEOUTS: dict[str, float] = {
-    "nsfw":             120.0,
-    "siglip":           120.0,
-    "yolo":              60.0,
-    "ocr":               60.0,
-    "blip":             120.0,
-    "llama":            180.0,
-    "qwen":             600.0,
-    "embedding":         60.0,
-    "text_classifier":   30.0,
+    "nsfw": 120.0,
+    "siglip": 120.0,
+    "yolo": 60.0,
+    "ocr": 60.0,
+    "blip": 120.0,
+    "llama": 180.0,
+    "qwen": 600.0,
+    "embedding": 60.0,
+    "text_classifier": 30.0,
 }
 
 
@@ -56,10 +58,11 @@ def timeout_call(
         except FuturesTimeoutError:
             logger.error(
                 "Model '%s' inference timed out after %.1fs — thread abandoned",
-                model_name, timeout,
+                model_name,
+                timeout,
             )
             raise TimeoutError(
                 f"Model '{model_name}' did not respond within {timeout:.0f}s."
-            )
+            ) from None
     finally:
         executor.shutdown(wait=False)

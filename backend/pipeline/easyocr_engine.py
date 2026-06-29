@@ -46,8 +46,8 @@ def load_easyocr() -> bool:
             return True
 
         try:
-            import torch
             import easyocr
+            import torch
 
             use_gpu = torch.cuda.is_available()
             logger.info(
@@ -68,14 +68,10 @@ def load_easyocr() -> bool:
                     built.append(reader)
                     logger.info("EasyOCR reader ready: %s", langs)
                 except Exception:
-                    logger.exception(
-                        "EasyOCR reader failed for langs=%s — skipping", langs
-                    )
+                    logger.exception("EasyOCR reader failed for langs=%s — skipping", langs)
 
             _readers = built
-            logger.info(
-                "EasyOCR: %d/%d readers loaded", len(built), len(_LANGUAGE_GROUPS)
-            )
+            logger.info("EasyOCR: %d/%d readers loaded", len(built), len(_LANGUAGE_GROUPS))
             return bool(built)
 
         except Exception:
@@ -105,9 +101,7 @@ def _preprocess_variants(image_path: str) -> list[np.ndarray]:
     h, w = img_bgr.shape[:2]
     if min(h, w) < 600:
         scale = 600 / min(h, w)
-        img_bgr = cv2.resize(
-            img_bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_LANCZOS4
-        )
+        img_bgr = cv2.resize(img_bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_LANCZOS4)
 
     variants: list[np.ndarray] = [img_bgr]
 
@@ -119,8 +113,12 @@ def _preprocess_variants(image_path: str) -> list[np.ndarray]:
 
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     adaptive = cv2.adaptiveThreshold(
-        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
-        blockSize=21, C=8,
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        blockSize=21,
+        C=8,
     )
     variants.append(cv2.cvtColor(adaptive, cv2.COLOR_GRAY2BGR))
 

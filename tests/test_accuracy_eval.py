@@ -26,32 +26,50 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 logger = logging.getLogger(__name__)
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ Decision engine unit tests Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-from backend.pipeline import decision_engine as engine
+from backend.pipeline import decision_engine as engine  # noqa: E402
 
 
 def _s(**kw: float) -> dict[str, float]:
     """Build a minimal scores dict with all keys defaulting to 0."""
-    base = {k: 0.0 for k in (
-        "adult_score", "heritage_score", "content_quality_score",
-        "child_safety_score", "child_presence_score",
-        "violence_self_harm_score", "weapon_score", "blood_score", "self_harm_score",
-        "promotion_score", "advertising_score", "affiliate_score", "social_media_score",
-        "terrorism_score", "fraud_score", "hate_speech_score", "harassment_score",
-        "misinformation_score", "self_harm_text_score", "pii_score",
-        "llama_risk_score", "llama_approves", "ensemble_risk_score",
-    )}
+    base = {
+        k: 0.0
+        for k in (
+            "adult_score",
+            "heritage_score",
+            "content_quality_score",
+            "child_safety_score",
+            "child_presence_score",
+            "violence_self_harm_score",
+            "weapon_score",
+            "blood_score",
+            "self_harm_score",
+            "promotion_score",
+            "advertising_score",
+            "affiliate_score",
+            "social_media_score",
+            "terrorism_score",
+            "fraud_score",
+            "hate_speech_score",
+            "harassment_score",
+            "misinformation_score",
+            "self_harm_text_score",
+            "pii_score",
+            "llama_risk_score",
+            "llama_approves",
+            "ensemble_risk_score",
+        )
+    }
     base.update(kw)
     return base
 
@@ -215,40 +233,59 @@ class TestEnsembleFormula(TestCase):
 
     def test_ensemble_weights_sum_correctly(self) -> None:
         from backend.pipeline.safety_flags import _compute_ensemble
+
         # All risk signals = 1.0, heritage = 0.0 Ã¢â€ â€™ max ensemble
         # 0.25 + 0.20 + 0.15 + 0.10 + 0.10 + (1-0)*0.05 + llama*0.15
         # With llama_result REJECTED conf=1.0: llama_risk=1.0
         # = 0.25 + 0.20 + 0.15 + 0.10 + 0.10 + 0.05 + 0.15 = 1.00
         result = _compute_ensemble(
-            adult_score=1.0, child_score=1.0, violence_score=1.0,
-            fraud_score=1.0, weapon_score=1.0, heritage_score=0.0,
+            adult_score=1.0,
+            child_score=1.0,
+            violence_score=1.0,
+            fraud_score=1.0,
+            weapon_score=1.0,
+            heritage_score=0.0,
             llama_result={"decision": "REJECTED", "confidence": 1.0},
         )
         self.assertAlmostEqual(result, 1.0, places=5)
 
     def test_heritage_reduces_ensemble_risk(self) -> None:
         from backend.pipeline.safety_flags import _compute_ensemble
+
         # heritage=0 contributes (1-0)*0.05 = 0.05
         # heritage=1 contributes (1-1)*0.05 = 0.00  Ã¢â€ â€™ lower ensemble
         low_heritage = _compute_ensemble(
-            adult_score=0.5, child_score=0.5, violence_score=0.5,
-            fraud_score=0.5, weapon_score=0.5, heritage_score=0.0,
+            adult_score=0.5,
+            child_score=0.5,
+            violence_score=0.5,
+            fraud_score=0.5,
+            weapon_score=0.5,
+            heritage_score=0.0,
             llama_result=None,
         )
         high_heritage = _compute_ensemble(
-            adult_score=0.5, child_score=0.5, violence_score=0.5,
-            fraud_score=0.5, weapon_score=0.5, heritage_score=1.0,
+            adult_score=0.5,
+            child_score=0.5,
+            violence_score=0.5,
+            fraud_score=0.5,
+            weapon_score=0.5,
+            heritage_score=1.0,
             llama_result=None,
         )
         self.assertGreater(low_heritage, high_heritage)
 
     def test_zero_scores_give_low_ensemble(self) -> None:
         from backend.pipeline.safety_flags import _compute_ensemble
+
         # All zeros, no llama Ã¢â€ â€™ (1-0)*0.05 + 0.5*0.15 = 0.05 + 0.075 = 0.125
         # (llama=None Ã¢â€ â€™ llama_risk=0.5)
         result = _compute_ensemble(
-            adult_score=0.0, child_score=0.0, violence_score=0.0,
-            fraud_score=0.0, weapon_score=0.0, heritage_score=0.0,
+            adult_score=0.0,
+            child_score=0.0,
+            violence_score=0.0,
+            fraud_score=0.0,
+            weapon_score=0.0,
+            heritage_score=0.0,
             llama_result=None,
         )
         self.assertLess(result, 0.20)
@@ -260,8 +297,10 @@ class TestMultiCaptionGeneration(TestCase):
     def test_generate_captions_deduplicates(self) -> None:
         from backend.pipeline import vlm_engine
 
-        with patch.object(vlm_engine, "_get_blip") as mock_get_blip, \
-             patch("PIL.Image.open") as mock_pil_open:
+        with (
+            patch.object(vlm_engine, "_get_blip") as mock_get_blip,
+            patch("PIL.Image.open") as mock_pil_open,
+        ):
             state = MagicMock()
             state.torch.cuda.is_available.return_value = False
             # All three decode calls return the same string Ã¢â€ â€™ dedup to 1
@@ -282,18 +321,21 @@ class TestMultiCaptionGeneration(TestCase):
 
     def test_generate_captions_returns_empty_on_failure(self) -> None:
         from backend.pipeline import vlm_engine
+
         with patch.object(vlm_engine, "_get_blip", side_effect=RuntimeError("no gpu")):
             captions = vlm_engine.generate_captions("fake.jpg")
         self.assertEqual(captions, [])
 
     def test_generate_caption_backward_compat(self) -> None:
         from backend.pipeline import vlm_engine
+
         with patch.object(vlm_engine, "generate_captions", return_value=["a gopuram"]):
             cap = vlm_engine.generate_caption("fake.jpg")
         self.assertEqual(cap, "a gopuram")
 
     def test_generate_caption_returns_empty_string_on_empty_list(self) -> None:
         from backend.pipeline import vlm_engine
+
         with patch.object(vlm_engine, "generate_captions", return_value=[]):
             cap = vlm_engine.generate_caption("fake.jpg")
         self.assertEqual(cap, "")
@@ -304,6 +346,7 @@ class TestReasonModerationMultiCaption(TestCase):
 
     def _patched_reason(self, **kwargs):
         from backend.pipeline import vlm_engine
+
         with patch.object(vlm_engine, "_get_llama", side_effect=RuntimeError("no gpu")):
             return vlm_engine.reason_moderation(**kwargs)
 
@@ -340,6 +383,7 @@ class TestReasonModerationMultiCaption(TestCase):
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ Full evaluation harness (runs against real images) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
+
 @dataclass
 class EvalResult:
     category: str
@@ -352,13 +396,17 @@ class EvalResult:
 
     @property
     def precision(self) -> float:
-        tp = self.correct - (self.total - self.correct - self.false_positives - self.false_negatives - self.errors)
+        tp = self.correct - (
+            self.total - self.correct - self.false_positives - self.false_negatives - self.errors
+        )
         denom = tp + self.false_positives
         return tp / denom if denom > 0 else 0.0
 
     @property
     def recall(self) -> float:
-        tp = self.correct - (self.total - self.correct - self.false_positives - self.false_negatives - self.errors)
+        tp = self.correct - (
+            self.total - self.correct - self.false_positives - self.false_negatives - self.errors
+        )
         denom = tp + self.false_negatives
         return tp / denom if denom > 0 else 0.0
 
@@ -380,16 +428,16 @@ class EvalResult:
 
 # Category Ã¢â€ â€™ expected decision
 CATEGORY_EXPECTED: dict[str, str] = {
-    "adult":     "REJECTED",
-    "safe":      "APPROVED",
-    "violence":  "REJECTED",
-    "heritage":  "APPROVED",
+    "adult": "REJECTED",
+    "safe": "APPROVED",
+    "violence": "REJECTED",
+    "heritage": "APPROVED",
     "festivals": "APPROVED",
-    "children":  "APPROVED",
-    "scams":     "REJECTED",
+    "children": "APPROVED",
+    "scams": "REJECTED",
     # screenshots and ambiguous have no hard expectation Ã¢â‚¬â€ treated as informational
     "screenshots": None,
-    "ambiguous":   None,
+    "ambiguous": None,
 }
 
 
@@ -413,21 +461,29 @@ def evaluate_category(
     Loads the real moderation pipeline Ã¢â‚¬â€ requires GPU + models to be available.
     caption_fn(path) optionally provides user-supplied captions.
     """
-    from backend.pipeline.safety_flags import analyze_image
     from backend.pipeline.decision_engine import decide
+    from backend.pipeline.safety_flags import analyze_image
 
     cat_dir = images_dir / category
     if not cat_dir.is_dir():
         logger.warning("Category dir not found: %s", cat_dir)
-        return EvalResult(category=category, total=0, correct=0,
-                          false_positives=0, false_negatives=0, errors=0)
+        return EvalResult(
+            category=category, total=0, correct=0, false_positives=0, false_negatives=0, errors=0
+        )
 
     expected = CATEGORY_EXPECTED.get(category)
-    image_paths = sorted(p for p in cat_dir.iterdir()
-                         if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"})
+    image_paths = sorted(
+        p for p in cat_dir.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
+    )
 
-    result = EvalResult(category=category, total=len(image_paths),
-                        correct=0, false_positives=0, false_negatives=0, errors=0)
+    result = EvalResult(
+        category=category,
+        total=len(image_paths),
+        correct=0,
+        false_positives=0,
+        false_negatives=0,
+        errors=0,
+    )
 
     for img_path in image_paths:
         caption = caption_fn(img_path) if caption_fn else None
@@ -448,30 +504,31 @@ def evaluate_category(
             elif expected == "REJECTED" and decision == "APPROVED":
                 result.false_negatives += 1
 
-            result.details.append({
-                "path": str(img_path),
-                "decision": decision,
-                "expected": expected,
-                "correct": correct,
-                "adult_score": pipeline_result.scores.get("adult_score"),
-                "heritage_score": pipeline_result.scores.get("heritage_score"),
-                "ensemble_risk": pipeline_result.scores.get("ensemble_risk_score"),
-            })
+            result.details.append(
+                {
+                    "path": str(img_path),
+                    "decision": decision,
+                    "expected": expected,
+                    "correct": correct,
+                    "adult_score": pipeline_result.scores.get("adult_score"),
+                    "heritage_score": pipeline_result.scores.get("heritage_score"),
+                    "ensemble_risk": pipeline_result.scores.get("ensemble_risk_score"),
+                }
+            )
 
         except Exception as exc:
             logger.exception("Error processing %s", img_path)
             result.errors += 1
-            result.details.append({"path": str(img_path), "outcome": "EXCEPTION", "error": str(exc)})
+            result.details.append(
+                {"path": str(img_path), "outcome": "EXCEPTION", "error": str(exc)}
+            )
 
     return result
 
 
 def evaluate_all(images_dir: Path) -> dict[str, EvalResult]:
     """Run evaluation for all 9 categories."""
-    return {
-        cat: evaluate_category(images_dir, cat)
-        for cat in CATEGORY_EXPECTED
-    }
+    return {cat: evaluate_category(images_dir, cat) for cat in CATEGORY_EXPECTED}
 
 
 def print_report(results: dict[str, EvalResult]) -> None:
@@ -496,8 +553,10 @@ def print_report(results: dict[str, EvalResult]) -> None:
     print("-" * 70)
     overall_fn_rate = total_fn / max(1, total_images - total_fp - total_errors) * 100
     overall_fp_rate = total_fp / max(1, total_images - total_fn - total_errors) * 100
-    print(f"{'OVERALL':<14} {total_images:>6} {total_fp:>5} {total_fn:>5}"
-          f" {overall_fp_rate:>6.1f}% {overall_fn_rate:>6.1f}%")
+    print(
+        f"{'OVERALL':<14} {total_images:>6} {total_fp:>5} {total_fn:>5}"
+        f" {overall_fp_rate:>6.1f}% {overall_fn_rate:>6.1f}%"
+    )
     print("=" * 70)
     target_fp_ok = overall_fp_rate <= 3.0
     target_fn_ok = overall_fn_rate <= 1.0
@@ -518,13 +577,11 @@ if __name__ == "__main__":
         result = evaluate_category(args.images_dir, args.category)
         print_report({args.category: result})
         if args.output:
-            Path(args.output).write_text(json.dumps(
-                {args.category: result.details}, indent=2
-            ))
+            Path(args.output).write_text(json.dumps({args.category: result.details}, indent=2))
     else:
         results = evaluate_all(args.images_dir)
         print_report(results)
         if args.output:
-            Path(args.output).write_text(json.dumps(
-                {cat: r.details for cat, r in results.items()}, indent=2
-            ))
+            Path(args.output).write_text(
+                json.dumps({cat: r.details for cat, r in results.items()}, indent=2)
+            )

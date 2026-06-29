@@ -30,6 +30,7 @@ class ModelInferenceError(RuntimeError):
 
 # ── BLIP state ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class _BLIPState:
     model: Any
@@ -55,7 +56,7 @@ def _get_blip() -> _BLIPState:
         logger.info("Loading BLIP image-captioning-large on %s", DEVICE)
         try:
             import torch
-            from transformers import BlipProcessor, BlipForConditionalGeneration
+            from transformers import BlipForConditionalGeneration, BlipProcessor
 
             processor = BlipProcessor.from_pretrained(BLIP_MODEL_ID)
             model = BlipForConditionalGeneration.from_pretrained(
@@ -116,7 +117,10 @@ def generate_captions(image_path: str, n: int = 3) -> list[str]:
             if n >= 2:
                 # 2. Beam search (quality)
                 ids = state.model.generate(
-                    **inputs, max_new_tokens=40, num_beams=3, do_sample=False,
+                    **inputs,
+                    max_new_tokens=40,
+                    num_beams=3,
+                    do_sample=False,
                 )
                 cap = state.processor.decode(ids[0], skip_special_tokens=True).strip()
                 if cap and cap not in captions:
@@ -125,7 +129,10 @@ def generate_captions(image_path: str, n: int = 3) -> list[str]:
             if n >= 3:
                 # 3. Sampling with higher temperature (diversity)
                 ids = state.model.generate(
-                    **inputs, max_new_tokens=40, do_sample=True, temperature=1.2,
+                    **inputs,
+                    max_new_tokens=40,
+                    do_sample=True,
+                    temperature=1.2,
                 )
                 cap = state.processor.decode(ids[0], skip_special_tokens=True).strip()
                 if cap and cap not in captions:
@@ -146,6 +153,7 @@ def generate_captions(image_path: str, n: int = 3) -> list[str]:
 # The decision_engine.py tiered rule cascade handles all safety decisions.
 # These functions return neutral confidence so no Llama tier fires and the
 # full rule cascade in decision_engine._evaluate() takes over.
+
 
 def reason_moderation(
     nsfw_score: float,

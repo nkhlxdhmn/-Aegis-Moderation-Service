@@ -21,8 +21,8 @@ Usage:
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Sequence
 
 from backend.pipeline.safety_flags import ModerationPipelineResult, analyze_image
 
@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 # Maximum concurrent images per batch tier
 _BATCH_SIZES = (
-    (20, 8),    # queue_depth â‰¤ 20 â†’ 8
-    (50, 16),   # queue_depth â‰¤ 50 â†’ 16
-    (None, 32), # queue_depth > 50 â†’ 32
+    (20, 8),  # queue_depth â‰¤ 20 â†’ 8
+    (50, 16),  # queue_depth â‰¤ 50 â†’ 16
+    (None, 32),  # queue_depth > 50 â†’ 32
 )
 _MIN_BATCH = 4
 
@@ -69,7 +69,9 @@ def analyze_batch(
     batch_sz = batch_size_for_depth(queue_depth)
     logger.info(
         "Batch moderation: %d images, queue_depth=%d, batch_size=%d",
-        len(items), queue_depth, batch_sz,
+        len(items),
+        queue_depth,
+        batch_sz,
     )
 
     results: list[ModerationPipelineResult | None] = [None] * len(items)
@@ -77,7 +79,7 @@ def analyze_batch(
 
     # Submit in sub-batches to avoid overwhelming the GPU
     for start in range(0, len(items), batch_sz):
-        sub = items[start: start + batch_sz]
+        sub = items[start : start + batch_sz]
         for offset, (image_path, caption) in enumerate(sub):
             idx = start + offset
             future = _batch_executor.submit(analyze_image, image_path, caption)
@@ -89,7 +91,8 @@ def analyze_batch(
             results[idx] = future.result()
         except Exception:
             logger.exception("Batch item %d failed", idx)
-            from backend.pipeline.safety_flags import _default_scores, ModerationPipelineResult
+            from backend.pipeline.safety_flags import ModerationPipelineResult, _default_scores
+
             results[idx] = ModerationPipelineResult(
                 scores=_default_scores(),
                 category_scores={},

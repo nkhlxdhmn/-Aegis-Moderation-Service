@@ -22,22 +22,23 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_URL_RE          = re.compile(r"https?://|www\.", re.IGNORECASE)
-_SOCIAL_RE       = re.compile(
+_URL_RE = re.compile(r"https?://|www\.", re.IGNORECASE)
+_SOCIAL_RE = re.compile(
     r"(t\.me|wa\.me|instagram\.com|youtube\.com|facebook\.com|twitter\.com"
     r"|x\.com|whatsapp\.com|tiktok\.com|snapchat\.com|linkedin\.com)",
     re.IGNORECASE,
 )
-_PAYMENT_RE      = re.compile(
+_PAYMENT_RE = re.compile(
     r"(upi://|phonepe|gpay|paytm|razorpay|upi|bhim)",
     re.IGNORECASE,
 )
-_TELEGRAM_RE     = re.compile(r"t\.me/", re.IGNORECASE)
+_TELEGRAM_RE = re.compile(r"t\.me/", re.IGNORECASE)
 
 
 def _try_pyzbar(img: np.ndarray) -> list[str]:
     try:
         from pyzbar import pyzbar
+
         codes = pyzbar.decode(img)
         return [c.data.decode("utf-8", errors="replace") for c in codes if c.data]
     except ImportError:
@@ -99,18 +100,18 @@ def analyze_qr(image_path: str) -> dict[str, Any]:
 
     if not decoded:
         return {
-            "qr_code_score":       0.0,
-            "qr_code_detected":    False,
-            "qr_decoded_text":     "",
-            "qr_contains_url":     False,
-            "qr_contains_social":  False,
+            "qr_code_score": 0.0,
+            "qr_code_detected": False,
+            "qr_decoded_text": "",
+            "qr_contains_url": False,
+            "qr_contains_social": False,
             "qr_contains_payment": False,
         }
 
     combined = " ".join(decoded).lower()
-    contains_social   = bool(_SOCIAL_RE.search(combined))
-    contains_payment  = bool(_PAYMENT_RE.search(combined))
-    contains_url      = bool(_URL_RE.search(combined))
+    contains_social = bool(_SOCIAL_RE.search(combined))
+    contains_payment = bool(_PAYMENT_RE.search(combined))
+    contains_url = bool(_URL_RE.search(combined))
     contains_telegram = bool(_TELEGRAM_RE.search(combined))
 
     # Score by severity:  social link > payment > generic URL > unknown content
@@ -121,18 +122,22 @@ def analyze_qr(image_path: str) -> dict[str, Any]:
     elif contains_url:
         score = 0.80
     else:
-        score = 0.55   # QR code present but couldn't classify — still suspicious
+        score = 0.55  # QR code present but couldn't classify — still suspicious
 
     logger.info(
         "QR codes detected: count=%d url=%s social=%s payment=%s score=%.2f",
-        len(decoded), contains_url, contains_social, contains_payment, score,
+        len(decoded),
+        contains_url,
+        contains_social,
+        contains_payment,
+        score,
     )
 
     return {
-        "qr_code_score":       score,
-        "qr_code_detected":    True,
-        "qr_decoded_text":     " | ".join(decoded[:3]),
-        "qr_contains_url":     contains_url,
-        "qr_contains_social":  contains_social,
+        "qr_code_score": score,
+        "qr_code_detected": True,
+        "qr_decoded_text": " | ".join(decoded[:3]),
+        "qr_contains_url": contains_url,
+        "qr_contains_social": contains_social,
         "qr_contains_payment": contains_payment,
     }

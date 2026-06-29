@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-MIN_DIMENSION = 32     # pixels — reject only obviously broken/icon images; models resize internally
+MIN_DIMENSION = 32  # pixels — reject only obviously broken/icon images; models resize internally
 BLUR_THRESHOLD = 40.0  # cv2.Laplacian variance below this → blurry
 
 
@@ -24,9 +24,9 @@ def check_image_quality(image_path: str) -> tuple[bool, str | None]:
     """
     logger.info("Image quality check started")
     try:
-        from PIL import Image
-        import numpy as np
         import cv2
+        import numpy as np
+        from PIL import Image
 
         with Image.open(image_path) as img:
             width, height = img.size

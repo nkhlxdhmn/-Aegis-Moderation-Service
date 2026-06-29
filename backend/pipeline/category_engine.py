@@ -12,4 +12,3 @@ def get_top_category(category_scores: dict[str, float]) -> tuple[str, float]:
         return "Uncategorized", 0.0
 
     return max(category_scores.items(), key=lambda item: item[1])
-

@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 TEXT_TRIGGER_CLASSES: frozenset[str] = frozenset(
     {"book", "cell phone", "tv", "laptop", "stop sign", "person"}
 )
-TEXT_DENSITY_THRESHOLD: float = 0.01   # lowered: run OCR on nearly all images
-ENTROPY_THRESHOLD: float = 0.05        # lowered: catch stylised promotional text
+TEXT_DENSITY_THRESHOLD: float = 0.01  # lowered: run OCR on nearly all images
+ENTROPY_THRESHOLD: float = 0.05  # lowered: catch stylised promotional text
 
 # Number of histogram bins used for entropy estimation.
 _ENTROPY_BINS: int = 32
@@ -70,9 +70,7 @@ def detect_text_regions(
         for det in yolo_detections:
             cls = str(det.get("class", "")).lower()
             if cls in TEXT_TRIGGER_CLASSES:
-                logger.debug(
-                    "OCR triggered by YOLO class '%s' for %s", cls, image_path
-                )
+                logger.debug("OCR triggered by YOLO class '%s' for %s", cls, image_path)
                 return True, {"trigger": "yolo_class", "yolo_class": cls}
 
     # ------------------------------------------------------------------

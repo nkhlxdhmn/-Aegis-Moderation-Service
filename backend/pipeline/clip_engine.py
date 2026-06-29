@@ -13,15 +13,15 @@ Key improvements over CLIP ViT-B/32:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
 import threading
+from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 MODEL_ID = "google/siglip2-large-patch16-384"
-SIGLIP_MODEL_ID = MODEL_ID   # alias for external callers / test discovery
+SIGLIP_MODEL_ID = MODEL_ID  # alias for external callers / test discovery
 DEVICE = "cuda:0"
 
 # ── Category prompts ──────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ class _SigLIPState:
     torch: Any
     device: str
     # Pre-encoded text feature tensors for reuse across requests
-    category_inputs: dict[str, Any]       # {category: processor_output}
+    category_inputs: dict[str, Any]  # {category: processor_output}
     heritage_inputs: Any
     safety_inputs: Any
     child_inputs: Any
@@ -170,7 +170,7 @@ def _get_state() -> _SigLIPState:
         logger.info("Loading SigLIP2 Large on %s", DEVICE)
         try:
             import torch
-            from transformers import AutoProcessor, AutoModel
+            from transformers import AutoModel, AutoProcessor
 
             processor = AutoProcessor.from_pretrained(MODEL_ID)
             model = AutoModel.from_pretrained(
@@ -249,7 +249,7 @@ def _sigmoid_scores(
     if isinstance(probs, float):
         probs = [probs]
 
-    return {prompt: max(0.0, min(1.0, float(p))) for prompt, p in zip(prompts, probs)}
+    return {prompt: max(0.0, min(1.0, float(p))) for prompt, p in zip(prompts, probs, strict=False)}
 
 
 def _max_category_score(scores_per_prompt: dict[str, float]) -> float:
@@ -262,11 +262,13 @@ def _fuse_category_scores(
     caption_scores: dict[str, float],
 ) -> dict[str, float]:
     return {
-        cat: max(0.0, min(1.0,
-            image_scores[cat] * 0.50
-            + ocr_scores[cat] * 0.25
-            + caption_scores[cat] * 0.25,
-        ))
+        cat: max(
+            0.0,
+            min(
+                1.0,
+                image_scores[cat] * 0.50 + ocr_scores[cat] * 0.25 + caption_scores[cat] * 0.25,
+            ),
+        )
         for cat in CATEGORY_PROMPTS
     }
 
@@ -296,7 +298,9 @@ def _category_scores_from_pv(pixel_values: Any, state: _SigLIPState) -> dict[str
     }
 
 
-def _category_scores_from_text(text_inputs: Any, pixel_values: Any, state: _SigLIPState) -> dict[str, float]:
+def _category_scores_from_text(
+    text_inputs: Any, pixel_values: Any, state: _SigLIPState
+) -> dict[str, float]:
     return {
         cat: _max_category_score(
             _sigmoid_scores(pixel_values, text_inputs_cat, state, CATEGORY_PROMPTS[cat])
@@ -346,14 +350,10 @@ def analyze_content(
         )
 
         # Safety scores (contextualized — very low noise floor with SigLIP sigmoid)
-        safety_scores = _sigmoid_scores(
-            pixel_values, state.safety_inputs, state, SAFETY_PROMPTS
-        )
+        safety_scores = _sigmoid_scores(pixel_values, state.safety_inputs, state, SAFETY_PROMPTS)
 
         # Child safety scores
-        child_scores = _sigmoid_scores(
-            pixel_values, state.child_inputs, state, CHILD_PROMPTS
-        )
+        child_scores = _sigmoid_scores(pixel_values, state.child_inputs, state, CHILD_PROMPTS)
 
         # Promotion scores
         promotion_scores = _sigmoid_scores(
@@ -395,7 +395,7 @@ def get_heritage_score(
     return max(0.0, min(1.0, analyze_content(image_path, caption, ocr_text).heritage_score))
 
 
-def get_image_embedding(image_path: str) -> "Any | None":
+def get_image_embedding(image_path: str) -> Any | None:
     """Return a normalised float32 SigLIP2 vision embedding for FAISS search.
 
     Uses the already-loaded SigLIP2 model singleton.  The vision encoder's

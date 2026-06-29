@@ -18,8 +18,8 @@ import logging
 import re
 from pathlib import Path
 
+from backend.pipeline.easyocr_engine import _get_readers, run_easyocr
 from backend.pipeline.surya_ocr import run_surya_ocr
-from backend.pipeline.easyocr_engine import run_easyocr, _get_readers
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +28,36 @@ URL_PATTERN = re.compile(r"https?://|www\.", re.IGNORECASE)
 WHITESPACE_PATTERN = re.compile(r"\s+")
 
 SPAM_PHRASES = (
-    "click here", "subscribe now", "follow for more",
-    "limited time offer", "dm me", "whatsapp me", "join my channel",
+    "click here",
+    "subscribe now",
+    "follow for more",
+    "limited time offer",
+    "dm me",
+    "whatsapp me",
+    "join my channel",
 )
 SCAM_PHRASES = (
-    "free money", "guaranteed income", "earn money instantly",
-    "double your money", "risk free profit", "investment scheme",
+    "free money",
+    "guaranteed income",
+    "earn money instantly",
+    "double your money",
+    "risk free profit",
+    "investment scheme",
 )
 PROMOTIONAL_PHRASES = (
-    "buy now", "sale", "discount", "sponsored",
-    "advertisement", "promo code", "brand deal",
+    "buy now",
+    "sale",
+    "discount",
+    "sponsored",
+    "advertisement",
+    "promo code",
+    "brand deal",
 )
 FAKE_HISTORY_PHRASES = (
-    "aliens built this temple", "secret history they hide",
-    "proof historians lied", "fake history exposed",
+    "aliens built this temple",
+    "secret history they hide",
+    "proof historians lied",
+    "fake history exposed",
     "ancient astronauts built",
 )
 
@@ -64,6 +80,7 @@ def _merge_fragments(*fragment_lists: list[str]) -> str:
 
 
 # â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def extract_ocr_text(image_path: str) -> str:
     """Extract multilingual OCR text â€” Surya primary, EasyOCR fallback.
@@ -131,6 +148,7 @@ def get_text_quality_score(ocr_text: str, caption: str | None = None) -> float:
 # â”€â”€ Backward-compatibility shims â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # model_warmup.py calls ocr._get_ocr(); validate_models.py calls _get_readers().
 # Both delegate to easyocr_engine so callers see the live reader list.
+
 
 def _get_ocr() -> list:
     """Alias for model_warmup.py â€” warms/returns EasyOCR readers."""

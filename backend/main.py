@@ -59,6 +59,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Security headers injected on every response.
 @app.middleware("http")
 async def _security_headers(request, call_next):
@@ -67,6 +68,7 @@ async def _security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
+
 
 if Counter and Histogram:
     REQUEST_COUNT = Counter("aegis_requests_total", "Total API requests", ["endpoint", "status"])
@@ -121,6 +123,7 @@ def model_health() -> dict[str, Any]:
 
     try:
         from backend.model_warmup import model_status, model_status_detail
+
         detail = model_status_detail()
         overall = model_status()
     except Exception:

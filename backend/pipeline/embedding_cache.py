@@ -23,12 +23,8 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-FAISS_INDEX_FILE: Path = (
-    Path(os.getenv("EMBEDDING_CACHE_DIR", "/app/data")) / "embeddings.faiss"
-)
-METADATA_FILE: Path = (
-    Path(os.getenv("EMBEDDING_CACHE_DIR", "/app/data")) / "embedding_meta.json"
-)
+FAISS_INDEX_FILE: Path = Path(os.getenv("EMBEDDING_CACHE_DIR", "/app/data")) / "embeddings.faiss"
+METADATA_FILE: Path = Path(os.getenv("EMBEDDING_CACHE_DIR", "/app/data")) / "embedding_meta.json"
 SIMILARITY_THRESHOLD: float = 0.93
 MAX_CACHE_SIZE: int = 100_000
 
@@ -41,7 +37,7 @@ _TRIM_FRACTION: float = 0.10
 # Module-level state (lazy-loaded)
 # ---------------------------------------------------------------------------
 
-_index = None          # faiss.IndexFlatIP or None
+_index = None  # faiss.IndexFlatIP or None
 _metadata: list[dict] = []
 _lock: threading.Lock = threading.Lock()
 _embedding_dim: int | None = None
@@ -187,9 +183,7 @@ def _trim_cache() -> None:
         # Reconstruct all kept vectors from the old index.
         # IndexFlatIP supports reconstruct_n.
         try:
-            kept_vectors = np.empty(
-                (len(_metadata), _embedding_dim), dtype=np.float32
-            )
+            kept_vectors = np.empty((len(_metadata), _embedding_dim), dtype=np.float32)
             for i in range(len(_metadata)):
                 kept_vectors[i] = _index.reconstruct(n_remove + i)
             new_index.add(kept_vectors)
@@ -270,20 +264,18 @@ def search_similar_image(
 
         query = embedding.reshape(1, -1).astype(np.float32)
         try:
-            D, I = _index.search(query, k=1)
+            D, indices = _index.search(query, k=1)
         except Exception as exc:  # noqa: BLE001
             logger.error("FAISS search failed: %s", exc)
             return None
 
         similarity = float(D[0][0])
-        idx = int(I[0][0])
+        idx = int(indices[0][0])
 
         if similarity >= SIMILARITY_THRESHOLD and idx >= 0 and idx < len(_metadata):
             result = dict(_metadata[idx])
             result["similarity"] = similarity
-            logger.debug(
-                "Cache hit for '%s': similarity=%.4f idx=%d", image_path, similarity, idx
-            )
+            logger.debug("Cache hit for '%s': similarity=%.4f idx=%d", image_path, similarity, idx)
             return result
 
     logger.debug(

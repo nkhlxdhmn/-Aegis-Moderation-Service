@@ -11,7 +11,7 @@ safety signals above 0.5 intact.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 
 def calibrate(score: float, temperature: float = 1.6) -> float:
@@ -42,7 +42,9 @@ def calibrate_yolo(score: float) -> float:
     return calibrate(score, temperature=1.4)
 
 
-def calibrate_scores(scores: dict[str, float], fn: Callable[[float], float] | None = None) -> dict[str, float]:
+def calibrate_scores(
+    scores: dict[str, float], fn: Callable[[float], float] | None = None
+) -> dict[str, float]:
     """Apply calibration to every value in a score dict."""
     f = fn or (lambda x: calibrate(x))
     return {k: f(v) for k, v in scores.items()}

@@ -57,7 +57,12 @@ def _get_state() -> dict[str, Any]:
                 1,
             )
 
-            local: dict[str, Any] = {"model": model, "processor": processor, "torch": torch, "nsfw_idx": nsfw_idx}
+            local: dict[str, Any] = {
+                "model": model,
+                "processor": processor,
+                "torch": torch,
+                "nsfw_idx": nsfw_idx,
+            }
             _state = local  # publish only after full init (double-checked locking)
         except Exception as exc:
             logger.exception("Failed to load OpenNSFW2 ViT-L")
@@ -96,8 +101,8 @@ def get_adult_score(image_path: str) -> float:
         }
 
         with torch.inference_mode():
-            logits = model(**inputs).logits          # [1, num_classes]
-            probs = torch.softmax(logits, dim=-1)    # calibrated class probabilities
+            logits = model(**inputs).logits  # [1, num_classes]
+            probs = torch.softmax(logits, dim=-1)  # calibrated class probabilities
             nsfw_score = float(probs[0, nsfw_idx].cpu())
 
         if torch.cuda.is_available():
@@ -110,4 +115,3 @@ def get_adult_score(image_path: str) -> float:
 
     logger.info("OpenNSFW2 inference completed: score=%.3f", nsfw_score)
     return max(0.0, min(1.0, nsfw_score))
-

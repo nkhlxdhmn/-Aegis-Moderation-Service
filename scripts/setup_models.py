@@ -50,38 +50,45 @@ def _timed(fn, label: str, fallback_status: str = _WARN) -> bool:
 def download_nsfw() -> None:
     _section("NSFW Classifier (Falconsai/nsfw_image_detection)")
     from backend.pipeline import nsfw
+
     _timed(nsfw._get_state, "NSFW model download", _FAIL)
 
 
 def download_yolo() -> None:
     _section("Object Detector (YOLO11x)")
     from backend.pipeline import object_detector
+
     _timed(object_detector._get_state, "YOLO11x download", _FAIL)
 
 
 def download_siglip() -> None:
     _section("Vision Encoder (google/siglip2-large-patch16-384)")
     from backend.pipeline import clip_engine
+
     _timed(clip_engine._get_state, "SigLIP2 download", _FAIL)
 
 
 def download_ocr() -> None:
     _section("OCR Engines (Surya + EasyOCR)")
     from backend.pipeline.surya_ocr import load_surya
+
     _timed(load_surya, "Surya OCR download", _WARN)
     from backend.pipeline.easyocr_engine import load_easyocr
+
     _timed(load_easyocr, "EasyOCR download", _FAIL)
 
 
 def download_blip() -> None:
     _section("Image Captioning (Salesforce/blip-image-captioning-large)")
     from backend.pipeline import vlm_engine
+
     _timed(vlm_engine._get_blip, "BLIP download", _FAIL)
 
 
 def download_detoxify() -> None:
     _section("Toxicity Classifier (Detoxify multilingual)")
     from backend.pipeline.text_moderation import _get_detoxify
+
     _timed(_get_detoxify, "Detoxify download", _WARN)
 
 
@@ -89,6 +96,7 @@ def check_faiss() -> None:
     _section("FAISS Embedding Cache")
     try:
         import faiss  # noqa: F401
+
         _record("faiss-cpu import", _PASS)
     except ImportError:
         _record("faiss-cpu import", _WARN, "not installed — similarity cache disabled")
