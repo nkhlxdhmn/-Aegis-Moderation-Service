@@ -104,10 +104,12 @@ def load_text_classifier() -> None:
             return
 
         try:
-            import torch
             from transformers import pipeline as hf_pipeline
 
-            device = 0 if torch.cuda.is_available() else -1
+            from core.runtime import get_runtime
+
+            runtime = get_runtime()
+            device = 0 if runtime.name == "cuda" else -1
             _classifier_pipeline = hf_pipeline(
                 task="text-classification",
                 model=str(model_dir),

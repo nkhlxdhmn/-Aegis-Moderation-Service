@@ -8,6 +8,8 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    env:
+      MODEL_WARMUP: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,7 +19,38 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install fastapi uvicorn pydantic python-multipart httpx \
-            pillow pypdf python-docx requests pytest pytest-asyncio
-      - name: Run tests
-        run: python -m pytest tests/test_main.py tests/test_standalone_report.py -v
+          python -m pip install \
+            fastapi "uvicorn[standard]" pydantic python-multipart httpx \
+            requests prometheus_client psutil pillow numpy opencv-python-headless \
+            pypdf python-docx pytest pytest-asyncio
+      - name: Run lint checks
+        run: |
+          python -m pip install ruff black
+          black --check .
+          ruff check .
+      - name: Run pytest
+        run: python -m pytest
+      - name: Run startup validation
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from backend.main import app
+
+          with TestClient(app) as client:
+              assert client.get("/health").status_code == 200
+              assert client.get("/api/models/status").status_code == 200
+          PY
+      - name: Run model import checks
+        run: |
+          python - <<'PY'
+          import backend.model_warmup
+          import backend.pipeline.clip_engine
+          import backend.pipeline.nsfw
+          import backend.pipeline.object_detector
+          import backend.pipeline.ocr
+          import backend.pipeline.surya_ocr
+          import backend.pipeline.text_classifier
+          import backend.pipeline.vlm_engine
+
+          print("model imports ok")
+          PY

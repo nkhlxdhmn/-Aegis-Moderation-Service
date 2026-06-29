@@ -5,7 +5,7 @@ folder). GPU/CPU selection is automatic. Returns plain-text fragments to the
 ocr.py router; nothing surya-internal leaks beyond this file.
 
 If the package is absent or initialization fails, load_surya() returns False
-and all callers degrade gracefully to EasyOCR.
+and callers return empty OCR text without switching engines.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def load_surya() -> bool:
     """Initialize the Surya predictor. Returns True on success, False otherwise.
 
     Thread-safe; safe to call multiple times — loads only once.
-    Logs "Surya OCR loaded" or "Surya OCR unavailable, fallback enabled".
+    Logs whether Surya OCR loaded or is unavailable.
     """
     global _predictor, _manager
     if _predictor is not None:
@@ -49,11 +49,11 @@ def load_surya() -> bool:
             return True
 
         except ImportError:
-            logger.info("surya package not installed — Surya OCR unavailable, fallback enabled")
+            logger.info("surya package not installed - Surya OCR unavailable")
             return False
 
         except Exception:
-            logger.exception("Surya OCR unavailable, fallback enabled")
+            logger.exception("Surya OCR unavailable")
             return False
 
 
@@ -68,7 +68,7 @@ def run_surya_ocr(image_path: str) -> list[str]:
     """Run Surya OCR on an image file. Returns text fragments or [] on any failure.
 
     Does not raise — all errors are logged and an empty list is returned so the
-    ocr.py router can fall through to EasyOCR automatically.
+    the OCR router can fail closed without switching engines.
     """
     predictor = _get_predictor()
     if predictor is None:

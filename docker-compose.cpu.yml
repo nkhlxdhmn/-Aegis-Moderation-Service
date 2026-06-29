@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aegis-moderation:1.0.0
+    image: aegis-moderation-cpu:1.0.0
     ports:
       - "8000:8000"
     restart: unless-stopped

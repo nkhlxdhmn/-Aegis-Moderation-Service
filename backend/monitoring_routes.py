@@ -71,14 +71,14 @@ def security_dashboard() -> JSONResponse:
 
 @router.get("/logs")
 def log_viewer(
-    level: str | None = Query(default=None, description="Filter by log level (INFO, WARNING, ERROR, DEBUG)"),
+    level: str | None = Query(
+        default=None, description="Filter by log level (INFO, WARNING, ERROR, DEBUG)"
+    ),
     search: str | None = Query(default=None, description="Search term (case-insensitive)"),
     limit: int = Query(default=200, le=1000, description="Maximum lines to return"),
 ) -> JSONResponse:
     """Recent application logs with optional level/search filtering."""
-    return JSONResponse(
-        {"logs": monitor.get_logs(level=level, search=search, limit=limit)}
-    )
+    return JSONResponse({"logs": monitor.get_logs(level=level, search=search, limit=limit)})
 
 
 @router.get("/all")
@@ -148,9 +148,7 @@ def export_data(
         return StreamingResponse(
             iter([output.getvalue()]),
             media_type="text/csv",
-            headers={
-                "Content-Disposition": "attachment; filename=aegis_metrics.csv"
-            },
+            headers={"Content-Disposition": "attachment; filename=aegis_metrics.csv"},
         )
 
     # Default: JSON
@@ -158,7 +156,5 @@ def export_data(
     return StreamingResponse(
         iter([payload]),
         media_type="application/json",
-        headers={
-            "Content-Disposition": "attachment; filename=aegis_metrics.json"
-        },
+        headers={"Content-Disposition": "attachment; filename=aegis_metrics.json"},
     )

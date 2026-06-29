@@ -80,8 +80,9 @@
     .model-badge{padding:3px 10px;border-radius:999px;font-weight:700;font-size:11px;}
     .badge-loaded{background:var(--green-l);color:var(--green);}
     .badge-not-loaded{background:var(--warn-l);color:var(--warn);}
+    .badge-lazy{background:var(--blue-l);color:var(--blue);}
     .badge-disabled{background:var(--bg2);color:var(--muted);}
-    .badge-error{background:var(--danger-l);color:var(--danger);}
+    .badge-error,.badge-failed{background:var(--danger-l);color:var(--danger);}
 
     /* Bar chart */
     .bar-chart{display:flex;align-items:flex-end;gap:6px;height:80px;padding-top:10px;}
@@ -188,7 +189,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const REFRESH_MS = 7000;
+const REFRESH_MS = 5000;
 let refreshTimer = null;
 
 /* ── Theme ──────────────────────────────────────────────────────────────── */
@@ -203,6 +204,29 @@ $("darkToggle").style.display = 'none';
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function gaugeClass(pct) { return pct >= 90 ? "fill-danger" : pct >= 70 ? "fill-warn" : "fill-green"; }
+function modelLabel(name) {
+  const labels = {
+    nsfw: "NSFW",
+    siglip: "SigLIP",
+    yolo: "YOLO",
+    ocr_surya: "Surya OCR",
+    blip: "BLIP",
+    llama: "Llama",
+    text_classifier: "Text Classifier",
+  };
+  return labels[name] || String(name || "").replace(/_/g, " ");
+}
+function modelStatusLabel(status) {
+  const labels = {
+    loaded: "loaded",
+    lazy: "lazy load",
+    not_loaded: "not loaded",
+    disabled: "disabled",
+    failed: "failed",
+    error: "failed",
+  };
+  return labels[status] || status;
+}
 function fmtUptime(s) {
   const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -213,11 +237,15 @@ async function refresh() {
   const bar = $("refreshBar");
   bar.style.width = "30%";
   try {
-    const resp = await fetch("/api/v1/monitor/all");
-    if (!resp.ok) throw new Error("API error");
+    const [resp, modelResp] = await Promise.all([
+      fetch("/api/v1/monitor/all"),
+      fetch("/api/models/status"),
+    ]);
+    if (!resp.ok || !modelResp.ok) throw new Error("API error");
     const d = await resp.json();
+    const liveModelStatus = await modelResp.json();
     bar.style.width = "70%";
-    renderAll(d);
+    renderAll(d, liveModelStatus);
     bar.style.width = "100%";
     setTimeout(() => { bar.style.width = "0%"; }, 500);
   } catch {
@@ -226,7 +254,7 @@ async function refresh() {
   }
 }
 
-function renderAll(d) {
+function renderAll(d, liveModelStatus) {
   const sys = d.system || {};
   const req = d.requests || {};
   const mod = d.moderation || {};
@@ -274,13 +302,14 @@ function renderAll(d) {
   $("healthGrid").innerHTML = healthHTML || '<div class="health-row">No data</div>';
 
   /* Model list */
-  const modelStatus = models.model_status || {};
+  const modelStatus = liveModelStatus || models.model_status || {};
   const modelHTML = Object.entries(modelStatus).map(([name, status]) => {
     let bc = "badge-not-loaded";
     if (status === "loaded") bc = "badge-loaded";
+    else if (status === "lazy") bc = "badge-lazy";
     else if (status === "disabled") bc = "badge-disabled";
-    else if (status === "error") bc = "badge-error";
-    return `<div class="model-row"><span style="font-weight:700;">${esc(name)}</span><span class="model-badge ${bc}">${esc(status)}</span></div>`;
+    else if (status === "error" || status === "failed") bc = "badge-error";
+    return `<div class="model-row"><span style="font-weight:700;">${esc(modelLabel(name))}</span><span class="model-badge ${bc}">${esc(modelStatusLabel(status))}</span></div>`;
   }).join("");
   $("modelList").innerHTML = modelHTML || '<div class="model-row">No models loaded</div>';
 

@@ -20,46 +20,48 @@ Tier 0 hard-rejects:
 import logging
 
 # â”€â”€ Per-category thresholds (Phase 3 â€” false-positive reduction) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-ADULT_REJECT_THRESHOLD = 0.45  # lowered: no LLM safety net
+ADULT_REJECT_THRESHOLD = 0.65
 HERITAGE_REVIEW_THRESHOLD = 0.50
 CONTENT_QUALITY_THRESHOLD = 0.35
-CHILD_SAFETY_THRESHOLD = 0.30  # lowered: flag earlier
-CHILD_SAFETY_REVIEW_THRESHOLD = 0.45  # lowered: route to review sooner
-TERRORISM_THRESHOLD = 0.50
-DRUG_TRAFFICKING_THRESHOLD = 0.50
-HUMAN_TRAFFICKING_THRESHOLD = 0.50
-VIOLENCE_SELF_HARM_THRESHOLD = 0.45  # lowered: catch borderline violence
-WEAPON_THRESHOLD = 0.45  # lowered: catch borderline weapons/guns
-BLOOD_THRESHOLD = 0.45  # lowered
-SELF_HARM_THRESHOLD = 0.35  # lowered: suicide/self-harm very sensitive
-PRIVACY_THRESHOLD = 0.55
-FRAUD_THRESHOLD = 0.55
-HATE_SPEECH_THRESHOLD = 0.55
-HARASSMENT_THRESHOLD = 0.55
-PROMOTION_THRESHOLD = 0.20  # any single promo phrase â†’ UNDER_REVIEW
+CHILD_SAFETY_THRESHOLD = 0.45
+CHILD_SAFETY_REVIEW_THRESHOLD = 0.65
+TERRORISM_THRESHOLD = 0.60
+DRUG_TRAFFICKING_THRESHOLD = 0.60
+HUMAN_TRAFFICKING_THRESHOLD = 0.60
+VIOLENCE_SELF_HARM_THRESHOLD = 0.65
+WEAPON_THRESHOLD = 0.70
+BLOOD_THRESHOLD = 0.65
+SELF_HARM_THRESHOLD = 0.65
+PRIVACY_THRESHOLD = 0.60
+FRAUD_THRESHOLD = 0.60
+HATE_SPEECH_THRESHOLD = 0.70
+HARASSMENT_THRESHOLD = 0.65
+PROMOTION_THRESHOLD = 0.70
+LLAMA_REJECTION_CONFIDENCE = 0.92
+LLAMA_APPROVAL_CONFIDENCE = 0.95
 
 # â”€â”€ Tier 0 thresholds â€” hard rejects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 # NSFW / pornographic content
-EXPLICIT_NSFW_THRESHOLD = 0.60  # lowered: flag nudity earlier
+EXPLICIT_NSFW_THRESHOLD = 0.90
 SECONDARY_ADULT_THRESHOLD = 0.45  # lowered
 SECONDARY_COMPANION_THRESHOLD = 0.30  # lowered
 VISUAL_EXPLICIT_BOOST = 0.10
 
 # Violence / dangerous content
-VIOLENCE_HARD_THRESHOLD = 0.65  # lowered: catch high-confidence violence
-GORE_HARD_THRESHOLD = 0.60  # lowered
-WEAPON_HARD_THRESHOLD = 0.60  # lowered: guns flagged at 60%
+VIOLENCE_HARD_THRESHOLD = 0.90
+GORE_HARD_THRESHOLD = 0.90
+WEAPON_HARD_THRESHOLD = 0.90
 WEAPON_VIOLENCE_WPN_THRESHOLD = 0.40  # lowered
 WEAPON_VIOLENCE_VIO_THRESHOLD = 0.35  # lowered
 WEAPON_GORE_WPN_THRESHOLD = 0.35  # lowered
 WEAPON_GORE_BLD_THRESHOLD = 0.35  # lowered
 VIOLENT_GORE_VIO_THRESHOLD = 0.35  # lowered
 VIOLENT_GORE_BLD_THRESHOLD = 0.35  # lowered
-SELF_HARM_HARD_THRESHOLD = 0.45  # lowered: suicide/self-harm critical
+SELF_HARM_HARD_THRESHOLD = 0.90
 
 # Promotion / spam hard reject
-PROMOTION_HARD_THRESHOLD = 0.30  # 1+ promo phrase â†’ immediate REJECT
+PROMOTION_HARD_THRESHOLD = 0.90
 SOCIAL_MEDIA_HARD_THRESHOLD = 0.30  # 1 social phrase (follow me, f4fâ€¦) â†’ REJECT
 MARKETING_KEYWORD_MIN_COUNT = 1.0  # any single marketing keyword â†’ REJECT
 COURSE_PROMOTION_THRESHOLD = 0.10  # any course promotion phrase â†’ REJECT
@@ -82,10 +84,10 @@ VIDEO_CONSECUTIVE_THRESHOLD = 3.0  # lowered
 
 # Heritage exception: content with heritage_score â‰¥ this triggers UNDER_REVIEW
 # instead of auto-REJECT for violence/weapon/self-harm/adult categories.
-HERITAGE_EXCEPTION_THRESHOLD = 0.55  # raised: require stronger heritage signal
+HERITAGE_EXCEPTION_THRESHOLD = 0.45
 
 # Ensemble risk: above this â†’ UNDER_REVIEW
-ENSEMBLE_RISK_THRESHOLD = 0.45  # lowered significantly: no LLM catch-all
+ENSEMBLE_RISK_THRESHOLD = 0.75
 
 # Heritage score above which weapon/violence/child checks are softened
 CULTURAL_PROTECTION_THRESHOLD = 0.65  # raised: require stronger heritage signal
@@ -280,7 +282,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         )
         return (
             "REJECTED",
-            HIGH_CONFIDENCE_VIOLENCE,
+            VIOLENCE_CONTENT,
             "Rejected: high-confidence violent content detected.",
         )
 
@@ -312,7 +314,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         )
         return (
             "REJECTED",
-            DANGEROUS_WEAPON_CONTENT,
+            WEAPON_CONTENT,
             "Rejected: dangerous weapon content detected with high confidence.",
         )
 

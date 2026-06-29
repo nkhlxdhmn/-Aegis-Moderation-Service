@@ -1,0 +1,4 @@
+# Pin CPU-only PyTorch wheels. Current surya-ocr requires torch>=2.7.0,
+# so the CPU image must not use the older 2.5.x torch line.
+torch==2.7.1+cpu
+torchvision==0.22.1+cpu

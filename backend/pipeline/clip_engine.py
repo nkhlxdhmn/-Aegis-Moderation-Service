@@ -172,7 +172,9 @@ def _get_state() -> _SigLIPState:
             import torch
             from transformers import AutoModel, AutoProcessor
 
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            from core.runtime import get_runtime
+
+            device = get_runtime().torch_device
             dtype = torch.float16 if device != "cpu" else torch.float32
             logger.info("Loading SigLIP2 Large on %s", device)
 

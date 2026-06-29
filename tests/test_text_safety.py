@@ -11,6 +11,8 @@ EXPECTED_KEYS = {
     "harassment_score",
     "misinformation_score",
     "self_harm_text_score",
+    "political_score",
+    "political_campaign_score",
 }
 
 

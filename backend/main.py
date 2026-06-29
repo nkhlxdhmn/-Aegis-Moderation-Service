@@ -22,6 +22,7 @@ from backend.documents import (
     write_document_upload,
 )
 from backend.image_io import ImageInputError, download_image, write_upload
+from backend.logging_config import configure_logging
 from backend.monitor import monitor
 from backend.pipeline.safety_flags import analyze_image
 from backend.pipeline.text_moderation import moderate_text
@@ -42,7 +43,7 @@ APP_VERSION = "1.0.0"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+configure_logging()
 logger = logging.getLogger("aegis")
 
 app = FastAPI(
@@ -70,7 +71,9 @@ def _startup_model_warmup() -> None:
     """Pre-load models when MODEL_WARMUP=true."""
     from backend.model_warmup import warmup_models_if_enabled
 
-    warmup_models_if_enabled()
+    logger.info("Application startup: configuring model warmup")
+    statuses = warmup_models_if_enabled()
+    logger.info("Application startup: model status=%s", statuses)
 
 
 # Security headers injected on every response.
@@ -160,6 +163,24 @@ def model_health() -> dict[str, Any]:
         "models": detail,
         "components": ["OCR", "Text Classifier", "Vision Models", "Rule Engine", "Document Parser"],
     }
+
+
+@app.get("/api/models/status")
+def models_status() -> dict[str, str]:
+    """Return live per-model readiness for the dashboard."""
+
+    from backend.model_warmup import model_status_detail
+
+    return model_status_detail()
+
+
+@app.get("/api/runtime/status")
+def runtime_status() -> dict[str, Any]:
+    """Return selected hardware runtime details without loading models."""
+
+    from core.runtime import runtime_status as _runtime_status
+
+    return _runtime_status()
 
 
 @app.get("/api/v1/metrics", include_in_schema=False)

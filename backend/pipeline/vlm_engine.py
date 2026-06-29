@@ -10,9 +10,9 @@ without requiring a generative LLM.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
-import json
 import re
 import threading
 from dataclasses import dataclass
@@ -67,6 +67,21 @@ def _resolve_device(torch: Any) -> str:
     requested = DEVICE
     if not str(requested).startswith("cuda"):
         return requested
+    try:
+        from core.runtime import get_runtime
+
+        runtime = get_runtime()
+    except Exception:
+        runtime = None
+    if runtime is not None:
+        if runtime.name == "cuda":
+            return runtime.torch_device
+        logger.warning(
+            "VLM_DEVICE=%s requested but CUDA is unavailable; using %s",
+            requested,
+            runtime.torch_device,
+        )
+        return runtime.torch_device
     if not torch.cuda.is_available():
         logger.warning("VLM_DEVICE=%s requested but CUDA is unavailable; using CPU", requested)
         return "cpu"

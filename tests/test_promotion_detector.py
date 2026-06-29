@@ -10,14 +10,20 @@ class PromotionDetectorTests(TestCase):
         result = analyze_promotion("", None, {}, [])
 
         self.assertEqual(
-            result,
+            set(result),
             {
-                "promotion_score": 0.0,
-                "advertising_score": 0.0,
-                "affiliate_score": 0.0,
-                "social_media_score": 0.0,
+                "promotion_score",
+                "advertising_score",
+                "affiliate_score",
+                "social_media_score",
+                "phone_number_score",
+                "social_handle_score",
+                "url_score",
+                "marketing_keyword_count",
+                "course_promotion_score",
             },
         )
+        self.assertTrue(all(score == 0.0 for score in result.values()))
 
     def test_ocr_and_caption_advertising_phrases_are_detected(self) -> None:
         result = analyze_promotion(

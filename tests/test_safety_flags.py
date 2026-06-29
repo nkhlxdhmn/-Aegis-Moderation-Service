@@ -21,12 +21,23 @@ EXPECTED_SCORE_KEYS = {
     "advertising_score",
     "affiliate_score",
     "social_media_score",
+    "marketing_keyword_count",
+    "course_promotion_score",
+    "phone_number_score",
+    "social_handle_score",
+    "url_score",
+    "qr_code_score",
     "terrorism_score",
     "fraud_score",
     "hate_speech_score",
     "harassment_score",
     "misinformation_score",
     "self_harm_text_score",
+    "political_score",
+    "political_campaign_score",
+    "ml_toxicity_score",
+    "ml_hate_score",
+    "text_classifier_score",
     "pii_score",
     # Ensemble + VLM signals added in production upgrade
     "llama_risk_score",
@@ -319,6 +330,7 @@ class SafetyFlagsTests(TestCase):
             "caption",
             clip_result.promotion_scores,
             yolo_detections,
+            qr_decoded_text="",
         )
         text_analysis.assert_called_once_with("email user@example.com", "caption")
         pii_analysis.assert_called_once_with("email user@example.com", "caption")

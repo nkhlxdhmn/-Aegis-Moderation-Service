@@ -88,9 +88,9 @@ _state_lock = threading.Lock()
 
 def _select_device() -> str:
     try:
-        import torch
+        from core.runtime import get_runtime
 
-        return DEVICE if torch.cuda.is_available() else "cpu"
+        return get_runtime().torch_device
     except Exception:
         return "cpu"
 

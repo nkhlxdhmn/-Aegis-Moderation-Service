@@ -20,6 +20,7 @@ APP_START_TIME = time.time()
 _PSUTIL_AVAILABLE = False
 try:
     import psutil as _psutil  # noqa: F401
+
     _PSUTIL_AVAILABLE = True
 except ImportError:
     pass
@@ -27,6 +28,7 @@ except ImportError:
 _TORCH_AVAILABLE = False
 try:
     import torch as _torch  # noqa: F401
+
     _TORCH_AVAILABLE = True
 except ImportError:
     pass
@@ -44,9 +46,7 @@ class _LogCapture(logging.Handler):
     def __init__(self, buf: collections.deque) -> None:  # type: ignore[type-arg]
         super().__init__()
         self._buf = buf
-        self.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
-        )
+        self.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -70,18 +70,10 @@ class AegisMonitor:
         self.start_time = time.time()
 
         # Ring buffers
-        self._requests: collections.deque[dict[str, Any]] = collections.deque(
-            maxlen=_MAX_REQUESTS
-        )
-        self._errors: collections.deque[dict[str, Any]] = collections.deque(
-            maxlen=_MAX_ERRORS
-        )
-        self._security: collections.deque[dict[str, Any]] = collections.deque(
-            maxlen=_MAX_SECURITY
-        )
-        self._logs: collections.deque[dict[str, Any]] = collections.deque(
-            maxlen=_MAX_LOGS
-        )
+        self._requests: collections.deque[dict[str, Any]] = collections.deque(maxlen=_MAX_REQUESTS)
+        self._errors: collections.deque[dict[str, Any]] = collections.deque(maxlen=_MAX_ERRORS)
+        self._security: collections.deque[dict[str, Any]] = collections.deque(maxlen=_MAX_SECURITY)
+        self._logs: collections.deque[dict[str, Any]] = collections.deque(maxlen=_MAX_LOGS)
 
         # Model timing
         self._model_load_times: dict[str, float] = {}
@@ -135,9 +127,7 @@ class AegisMonitor:
             self._decision_count[decision] = self._decision_count.get(decision, 0) + 1
             for cat, score in cats.items():
                 if score > 50:
-                    self._category_flag_count[cat] = (
-                        self._category_flag_count.get(cat, 0) + 1
-                    )
+                    self._category_flag_count[cat] = self._category_flag_count.get(cat, 0) + 1
 
     def record_error(self, *, endpoint: str, error_type: str, detail: str) -> None:
         with self._lock:
@@ -248,9 +238,9 @@ class AegisMonitor:
                                 "total_gb": round(total / 1e9, 2),
                                 "allocated_gb": round(alloc / 1e9, 2),
                                 "reserved_gb": round(reserved / 1e9, 2),
-                                "utilization_percent": round(alloc / total * 100, 1)
-                                if total > 0
-                                else 0,
+                                "utilization_percent": (
+                                    round(alloc / total * 100, 1) if total > 0 else 0
+                                ),
                             }
                         )
                     stats["gpu"] = gpus or None
@@ -302,8 +292,7 @@ class AegisMonitor:
             ],
             "history_10s_buckets": history,
             "by_content_type": {
-                k: ct_counts.get(k, 0)
-                for k in ("image", "text", "video", "pdf", "docx")
+                k: ct_counts.get(k, 0) for k in ("image", "text", "video", "pdf", "docx")
             },
         }
 
@@ -411,29 +400,21 @@ class AegisMonitor:
             models = {}
 
         ocr_ok = any(v == "loaded" for k, v in models.items() if "ocr" in k)
-        vision_ok = any(
-            models.get(m) == "loaded" for m in ("nsfw", "siglip", "yolo", "blip")
-        )
+        vision_ok = any(models.get(m) == "loaded" for m in ("nsfw", "siglip", "yolo", "blip"))
         text_ok = models.get("text_classifier") in ("loaded", "disabled")
 
         disk = system.get("disk") or {}
         disk_pct = disk.get("percent", 0)
-        disk_status = (
-            "healthy" if disk_pct < 80 else ("warning" if disk_pct < 95 else "offline")
-        )
+        disk_status = "healthy" if disk_pct < 80 else ("warning" if disk_pct < 95 else "offline")
 
         mem = system.get("memory") or {}
         mem_pct = mem.get("percent", 0)
-        mem_status = (
-            "healthy" if mem_pct < 80 else ("warning" if mem_pct < 95 else "offline")
-        )
+        mem_status = "healthy" if mem_pct < 80 else ("warning" if mem_pct < 95 else "offline")
 
         gpu_status = "healthy" if system.get("gpu") else "warning"
 
         def _icon(status: str) -> str:
-            return {"healthy": "🟢", "warning": "🟡", "offline": "🔴"}.get(
-                status, "⚪"
-            )
+            return {"healthy": "🟢", "warning": "🟡", "offline": "🔴"}.get(status, "⚪")
 
         def _component(label: str, status: str) -> dict[str, str]:
             return {"label": label, "status": status, "icon": _icon(status)}
@@ -441,12 +422,8 @@ class AegisMonitor:
         return {
             "api": _component("API Server", "healthy"),
             "ocr": _component("OCR Engine", "healthy" if ocr_ok else "warning"),
-            "vision_model": _component(
-                "Vision Models", "healthy" if vision_ok else "warning"
-            ),
-            "text_model": _component(
-                "Text Model", "healthy" if text_ok else "warning"
-            ),
+            "vision_model": _component("Vision Models", "healthy" if vision_ok else "warning"),
+            "text_model": _component("Text Model", "healthy" if text_ok else "warning"),
             "disk": _component("Disk Storage", disk_status),
             "gpu": _component("GPU", gpu_status),
             "memory": _component("Memory", mem_status),

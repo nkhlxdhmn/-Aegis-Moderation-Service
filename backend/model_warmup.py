@@ -1,11 +1,9 @@
-"""Model warmup helpers for moderation service startup.
+"""Safe model warmup helpers for moderation service startup.
 
-Loads all heavy model weights into VRAM before the FastAPI server accepts
-requests, so the first moderation request doesn't pay cold-start latency.
-
-GPU allocation:
-  cuda:0 â€” all models (single-GPU default; set VLM_DEVICE env var to
-            redirect BLIP/Llama to a second GPU on multi-GPU hosts).
+Each model is loaded independently so one missing package, unavailable GPU, or
+bad weight file cannot prevent the FastAPI application from starting. The
+module keeps a small in-memory status map that powers the dashboard and health
+APIs.
 """
 
 from __future__ import annotations
@@ -13,208 +11,268 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
+from collections.abc import Callable
+from typing import Literal
+
+logger = logging.getLogger(__name__)
+
+ModelState = Literal["loaded", "failed", "disabled", "not_loaded", "lazy"]
+
+MODEL_KEYS: tuple[str, ...] = (
+    "nsfw",
+    "siglip",
+    "yolo",
+    "ocr_surya",
+    "blip",
+    "llama",
+    "text_classifier",
+)
+
+_warmup_lock = threading.Lock()
+_models_loaded = False
+_last_error: str | None = None
+_model_status: dict[str, ModelState] = {key: "not_loaded" for key in MODEL_KEYS}
+_model_errors: dict[str, str] = {}
 
 
 def _vlm_device() -> str:
     return os.getenv("VLM_DEVICE", "cuda:0")
 
 
-logger = logging.getLogger(__name__)
+def _record_model_load(name: str, duration: float) -> None:
+    try:
+        from backend.monitor import monitor
 
-_warmup_lock = threading.Lock()
-_models_loaded = False
-_last_error: str | None = None
+        monitor.record_model_load(name, duration)
+    except Exception:
+        logger.debug("Unable to record model load timing for %s", name, exc_info=True)
+
+
+def _warmup_enabled() -> bool:
+    return os.getenv("MODEL_WARMUP", "").lower() == "true"
+
+
+def _set_status(key: str, state: ModelState, error: str | None = None) -> None:
+    _model_status[key] = state
+    if error:
+        _model_errors[key] = error
+    else:
+        _model_errors.pop(key, None)
+
+
+def safe_load(name: str, loader: Callable[[], object]) -> bool:
+    """Load one model and return whether the loader completed without raising."""
+    started = time.perf_counter()
+    try:
+        logger.info("Loading %s", name)
+        loader()
+        duration = time.perf_counter() - started
+        _record_model_load(name, duration)
+        logger.info("%s loaded successfully", name)
+        return True
+    except Exception as exc:
+        duration = time.perf_counter() - started
+        _record_model_load(name, duration)
+        logger.exception("%s failed: %s", name, exc)
+        return False
 
 
 def load_nsfw() -> None:
-    """Load OpenNSFW2 ViT-L on cuda:0."""
+    """Load OpenNSFW2 ViT-L."""
     from backend.pipeline import nsfw
 
     nsfw._get_state()
 
 
 def load_yolo() -> None:
-    """Load YOLO11x on cuda:0."""
+    """Load YOLO11x."""
     from backend.pipeline import object_detector
 
     object_detector._get_state()
 
 
 def load_siglip() -> None:
-    """Load SigLIP2 Large on cuda:0."""
+    """Load SigLIP2 Large."""
     from backend.pipeline import clip_engine
 
     clip_engine._get_state()
 
 
 def load_surya() -> None:
-    """Load Surya OCR (primary engine). Logs outcome; no-op if package absent."""
+    """Load Surya OCR, raising if the primary OCR engine is unavailable."""
     from backend.pipeline.surya_ocr import load_surya as _load
 
-    ok = _load()
-    if ok:
-        logger.info("Surya OCR loaded")
-    else:
-        logger.info("Surya OCR unavailable, fallback enabled")
+    if not _load():
+        raise RuntimeError("Surya OCR unavailable")
 
 
 def load_ocr() -> None:
-    """Warm the hybrid OCR engine (Surya primary + EasyOCR fallback)."""
+    """Warm the Surya OCR engine."""
     load_surya()
-    from backend.pipeline.easyocr_engine import load_easyocr
-
-    load_easyocr()
 
 
-def load_blip2() -> None:
-    """Load BLIP image-captioning-large on VLM_DEVICE (default cuda:0)."""
+def load_blip() -> None:
+    """Load BLIP image captioning."""
     from backend.pipeline import vlm_engine
 
     vlm_engine._get_blip()
 
 
+def load_blip2() -> None:
+    """Backward-compatible alias for BLIP warmup."""
+    load_blip()
+
+
+def load_llama() -> None:
+    """Load Llama reasoning model."""
+    from backend.pipeline import vlm_engine
+
+    vlm_engine._get_llama()
+
+
 def load_text_classifier() -> None:
-    """Try to load the text abuse classifier.  No-op when MuRIL weights are absent."""
+    """Try to load the text abuse classifier."""
     from backend.pipeline import text_classifier
 
     text_classifier.load_text_classifier()
 
 
-def load_ml_toxicity() -> None:
-    """No-op â€” ML toxicity disabled until Dockerfile upgrades to PyTorch â‰¥ 2.6."""
+def _classifier_state() -> ModelState:
+    try:
+        from backend.pipeline import text_classifier
 
-
-def load_llama() -> None:
-    """Load Llama reasoning model on VLM_DEVICE."""
-    from backend.pipeline import vlm_engine
-
-    vlm_engine._get_llama()
-
-def warmup_models() -> None:
-    """Load all model weights in dependency order.
-
-    GPU 0 models load first; GPU 1 models are loaded last so they don't
-    compete for system RAM during the SigLIP/YOLO download phase.
-    Errors are re-raised so the container fails health checks and is
-    restarted by the orchestrator rather than silently degrading.
-    """
-    global _models_loaded, _last_error
-    with _warmup_lock:
-        try:
-            logger.info("Warmup: loading OpenNSFW2 (cuda:0)")
-            load_nsfw()
-
-            logger.info("Warmup: loading SigLIP2 (cuda:0)")
-            load_siglip()
-
-            logger.info("Warmup: loading YOLO11x (cuda:0)")
-            load_yolo()
-
-            logger.info("Warmup: loading OCR engines (Surya primary + EasyOCR fallback)")
-            load_ocr()
-
-            logger.info("Warmup: loading BLIP image-captioning-large (%s)", _vlm_device())
-            load_blip2()
-
-            logger.info("Warmup: ML toxicity skipped (re-enable when torch â‰¥ 2.6)")
-            load_ml_toxicity()
-
-            logger.info("Warmup: text classifier (MuRIL hook â€” no-op if weights absent)")
-            load_text_classifier()
-
-            logger.info("Warmup: loading Llama reasoning model (%s)", _vlm_device())
-            load_llama()
-
-            logger.info("Warmup: skipping Qwen (stubbed)")
-        except Exception as exc:
-            _models_loaded = False
-            _last_error = str(exc)
-            logger.exception("Moderation model warmup failed")
-            raise
-        _models_loaded = True
-        _last_error = None
-    logger.info("Moderation model warmup completed â€” all models on GPU")
-
-
-def warmup_models_if_enabled() -> None:
-    if os.getenv("MODEL_WARMUP", "").lower() == "true":
-        warmup_models()
-
-
-def model_status() -> str:
-    if _models_loaded:
-        return "loaded"
-    if _last_error:
-        return "error"
+        if text_classifier.is_available():
+            return "loaded"
+        if getattr(text_classifier, "_classifier_disabled", False):
+            return "disabled"
+    except Exception:
+        logger.debug("Unable to inspect text classifier state", exc_info=True)
+        return "failed"
     return "not_loaded"
 
 
-def model_status_detail() -> dict[str, str]:
-    """Return per-model load state by inspecting singleton globals."""
-    detail: dict[str, str] = {}
+def _live_state_from_singletons(key: str) -> ModelState:
+    """Inspect already-imported singleton state without forcing downloads."""
     try:
-        from backend.pipeline import nsfw as _nsfw
+        if key == "nsfw":
+            from backend.pipeline import nsfw
 
-        detail["nsfw"] = "loaded" if _nsfw._state is not None else "not_loaded"
+            return "loaded" if nsfw._state is not None else "not_loaded"
+        if key == "siglip":
+            from backend.pipeline import clip_engine
+
+            return "loaded" if clip_engine._state is not None else "not_loaded"
+        if key == "yolo":
+            from backend.pipeline import object_detector
+
+            return "loaded" if object_detector._state is not None else "not_loaded"
+        if key == "ocr_surya":
+            from backend.pipeline.surya_ocr import is_available
+
+            return "loaded" if is_available() else "not_loaded"
+        if key == "blip":
+            from backend.pipeline import vlm_engine
+
+            return "loaded" if vlm_engine._blip_state is not None else "not_loaded"
+        if key == "llama":
+            from backend.pipeline import vlm_engine
+
+            return "loaded" if vlm_engine._llama_state is not None else "not_loaded"
+        if key == "text_classifier":
+            return _classifier_state()
     except Exception:
-        detail["nsfw"] = "error"
-    try:
-        from backend.pipeline import clip_engine as _clip
+        logger.debug("Unable to inspect %s state", key, exc_info=True)
+        return "failed"
+    return "not_loaded"
 
-        detail["siglip"] = "loaded" if _clip._state is not None else "not_loaded"
-    except Exception:
-        detail["siglip"] = "error"
-    try:
-        from backend.pipeline import object_detector as _yolo
 
-        detail["yolo"] = "loaded" if _yolo._state is not None else "not_loaded"
-    except Exception:
-        detail["yolo"] = "error"
-    try:
-        from backend.pipeline.surya_ocr import is_available as _surya_ok
+def warmup_models() -> dict[str, ModelState]:
+    """Load all models safely and return per-model load status."""
+    global _models_loaded, _last_error
 
-        detail["ocr_surya"] = "loaded" if _surya_ok() else "not_loaded"
-    except Exception:
-        detail["ocr_surya"] = "error"
-    try:
-        from backend.pipeline.easyocr_engine import is_available as _easyocr_ok
+    with _warmup_lock:
+        _models_loaded = False
+        _last_error = None
 
-        detail["ocr_easyocr"] = "loaded" if _easyocr_ok() else "not_loaded"
-    except Exception:
-        detail["ocr_easyocr"] = "error"
-    try:
-        from backend.pipeline import vlm_engine as _vlm
+        load_plan: tuple[tuple[str, str, Callable[[], object]], ...] = (
+            ("nsfw", "NSFW", load_nsfw),
+            ("siglip", "SigLIP", load_siglip),
+            ("yolo", "YOLO", load_yolo),
+            ("ocr_surya", "Surya OCR", load_surya),
+            ("blip", f"BLIP ({_vlm_device()})", load_blip),
+            ("llama", f"Llama ({_vlm_device()})", load_llama),
+            ("text_classifier", "Text Classifier", load_text_classifier),
+        )
 
-        detail["blip"] = "loaded" if _vlm._blip_state is not None else "not_loaded"
-        detail["llama"] = "loaded" if _vlm._llama_state is not None else "not_loaded"
-    except Exception:
-        detail["blip"] = "error"
-        detail["llama"] = "error"
-    try:
-        from backend.pipeline import ml_toxicity as _tox
+        for key, label, loader in load_plan:
+            _set_status(key, "not_loaded")
+            ok = safe_load(label, loader)
+            if ok:
+                status = _classifier_state() if key == "text_classifier" else "loaded"
+                _set_status(key, status)
+            else:
+                _set_status(key, "failed", f"{label} failed during warmup")
 
-        if getattr(_tox, "_DISABLED", False):
-            detail["ml_toxicity"] = "disabled"
-        elif getattr(_tox, "_pipeline", None) is not None:
-            detail["ml_toxicity"] = "loaded"
+        _models_loaded = True
+        failed = [key for key, state in _model_status.items() if state == "failed"]
+        _last_error = ", ".join(failed) if failed else None
+
+        if failed:
+            logger.warning("Model warmup completed with failures: %s", ", ".join(failed))
         else:
-            detail["ml_toxicity"] = "not_loaded"
-    except Exception:
-        detail["ml_toxicity"] = "error"
-    try:
-        from backend.pipeline import text_classifier as _tc
+            logger.info("Model warmup completed successfully")
 
-        if _tc._classifier_disabled:
-            detail["text_classifier"] = "disabled"
-        elif _tc._classifier_pipeline is not None:
-            detail["text_classifier"] = "loaded"
+        return dict(_model_status)
+
+
+def warmup_models_if_enabled() -> dict[str, ModelState]:
+    if _warmup_enabled():
+        return warmup_models()
+
+    logger.info("MODEL_WARMUP is disabled; models will load lazily")
+    return dict(_model_status)
+
+
+def model_status() -> str:
+    if any(state == "failed" for state in _model_status.values()):
+        return "failed"
+    if _models_loaded:
+        return "loaded"
+    if _last_error:
+        return "failed"
+    if not _warmup_enabled():
+        return "lazy"
+    return "not_loaded"
+
+
+def model_status_detail() -> dict[str, ModelState]:
+    """Return per-model load state for the public API and dashboard."""
+    detail: dict[str, ModelState] = {}
+    warmup_disabled = not _warmup_enabled()
+
+    for key in MODEL_KEYS:
+        tracked = _model_status.get(key, "not_loaded")
+        live = _live_state_from_singletons(key)
+
+        if live == "loaded":
+            detail[key] = "loaded"
+        elif tracked == "failed" or live == "failed":
+            detail[key] = "failed"
+        elif live == "disabled" or tracked == "disabled":
+            detail[key] = "disabled"
+        elif warmup_disabled:
+            detail[key] = "lazy"
         else:
-            detail["text_classifier"] = "not_loaded"
-    except Exception:
-        detail["text_classifier"] = "error"
+            detail[key] = tracked
+
     return detail
 
 
-# â”€â”€ Legacy aliases (kept for backwards compat with any external callers) â”€â”€â”€â”€â”€â”€â”€
+def model_errors() -> dict[str, str]:
+    return dict(_model_errors)
+
+
+# Legacy aliases kept for backwards compatibility with external callers.
 load_nudenet = load_nsfw
 load_openclip = load_siglip

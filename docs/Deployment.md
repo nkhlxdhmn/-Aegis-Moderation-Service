@@ -29,7 +29,7 @@ docker compose -f docker-compose.gpu.yml up --build -d
 
 ### Pre-warming Models
 
-In production, you should pre-warm models so the first request doesn't suffer cold-start latency.
+In production, you can pre-warm models so the first request doesn't suffer cold-start latency. Keep this disabled for local Docker or small hosts; eager warmup can exceed available RAM/VRAM and cause container exit code 137.
 
 Edit `docker-compose.gpu.yml`:
 ```yaml

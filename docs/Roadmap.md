@@ -11,5 +11,5 @@ This document outlines planned features and improvements for Aegis Moderation.
 
 ## Known Limitations
 
-- **Language Support**: OCR is heavily biased towards English and Latin scripts. The EasyOCR fallback provides basic Indic support, but CJK characters are currently unoptimized.
+- **Language Support**: OCR now uses Surya only. CJK characters and some low-resource scripts may need targeted Surya tuning and evaluation.
 - **Throughput**: Since the application is a monolith running synchronous pipeline inference, throughput is heavily bottlenecked by GPU compute.

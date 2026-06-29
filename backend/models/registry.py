@@ -7,7 +7,7 @@ libraries download them into the configured cache on first use, or operators can
 
 from __future__ import annotations
 
-OCR_MODEL = "easyocr/default"
+OCR_MODEL = "surya-ocr"
 SURYA_OCR_MODEL = "surya-ocr/default"
 TEXT_MODEL = "detoxify/unbiased"
 VISION_MODEL = "qwen-vl/default"

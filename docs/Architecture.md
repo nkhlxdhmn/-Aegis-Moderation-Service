@@ -7,7 +7,7 @@ Aegis Moderation uses a standalone, stateless architecture designed for in-proce
 1. **Ingestion**: Fastapi receives the payload (`multipart/form-data` or JSON).
 2. **Validation**: `image_io.py` or `documents.py` validates limits (size, pixels, SSRF checks) and writes content to a temporary OS file.
 3. **Orchestration**: The request is routed to the specific pipeline (`safety_flags.py` for images, `text_moderation.py` for text, etc.).
-4. **Inference**: Content passes through a series of loaded PyTorch/Transformers models.
+4. **Inference**: Content passes through the selected runtime (`CUDA -> AMD XDNA NPU through ONNX Runtime -> CPU`) and loaded model stack.
 5. **Decision**: Raw model scores are aggregated by `reports.py` into a final `risk_level` and `decision`.
 6. **Cleanup**: Temporary files are deleted.
 
@@ -18,7 +18,7 @@ Aegis Moderation uses a standalone, stateless architecture designed for in-proce
 | **Vision (NSFW)** | `Falconsai/nsfw_image_detection` | Detect explicit/suggestive content |
 | **Object Detection** | `YOLO11x` (Ultralytics) | Detect weapons, drugs, gore |
 | **Vision Embeddings** | `google/siglip2-large-patch16-384` | Zero-shot safety classification |
-| **OCR** | `Surya` + `EasyOCR` | Extract text from images |
+| **OCR** | `Surya OCR` | Extract text from images |
 | **Image Captioning** | `Salesforce/blip-image-captioning-large` | Provide visual context for text models |
 | **Text Moderation** | `Detoxify` (Multilingual) | Detect toxicity, insults, identity hate |
 | **Language ID** | `FastText` | Detect content language |
@@ -46,3 +46,15 @@ The application uses an in-process singleton (`AegisMonitor`) in `backend/monito
 - 10-second history buckets for throughput graphing
 
 No external database (like PostgreSQL or Redis) is required.
+
+## 5. Runtime Selection
+
+Hardware detection lives in `core/runtime/`:
+
+| Priority | Runtime | Backend |
+|---|---|---|
+| 1 | NVIDIA CUDA | PyTorch CUDA / optional ONNX CUDA provider |
+| 2 | AMD XDNA NPU | ONNX Runtime `VitisAIExecutionProvider` |
+| 3 | CPU | CPU fallback |
+
+The NPU backend is optional. If ONNX Runtime or the AMD execution provider is unavailable, the service continues on CPU. Runtime details are exposed at `GET /api/runtime/status`.

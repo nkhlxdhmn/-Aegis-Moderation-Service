@@ -9,11 +9,17 @@ services:
     restart: unless-stopped
     environment:
       ENVIRONMENT: production
-      MODEL_WARMUP: "true"
+      MODEL_WARMUP: "false"
       NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      XDG_CACHE_HOME: /home/aegis/.cache
+      HF_HOME: /home/aegis/.cache/huggingface
+      TORCH_HOME: /home/aegis/.cache/torch
+      YOLO_CONFIG_DIR: /home/aegis/.config/ultralytics
     volumes:
       - hf_cache:/home/aegis/.cache/huggingface
+      - torch_cache:/home/aegis/.cache/torch
+      - ultralytics_config:/home/aegis/.config/ultralytics
       - app_data:/app/data
     deploy:
       resources:
@@ -23,12 +29,14 @@ services:
               count: all
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 120s
 
 volumes:
   hf_cache:
+  torch_cache:
+  ultralytics_config:
   app_data:

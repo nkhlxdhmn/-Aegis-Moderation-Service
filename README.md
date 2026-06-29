@@ -23,7 +23,9 @@ Analyze images, videos, text, PDFs, and DOCX files with a full pipeline of local
 | **PDF** | Text extraction, link analysis, phishing / malware detection |
 | **DOCX** | Paragraph + table text, embedded image count, PII |
 
-**AI models:** NSFW classifier · YOLO11x object detector · SigLIP2 vision encoder · Surya + EasyOCR · BLIP image captioning · Detoxify multilingual toxicity · FastText language ID.
+**AI models:** NSFW classifier · YOLO11x object detector · SigLIP2 vision encoder · Surya OCR · BLIP image captioning · Detoxify multilingual toxicity · FastText language ID.
+
+**Runtime priority:** NVIDIA CUDA -> optional AMD XDNA NPU via ONNX Runtime -> CPU fallback. NPU support is optional; missing NPU packages do not block startup.
 
 ---
 
@@ -105,7 +107,7 @@ cp .env.example .env   # then edit as needed
 | `MAX_IMAGE_SIZE_MB` | `10` | Image upload size cap |
 | `MAX_IMAGE_PIXELS` | `40000000` | Max image pixel count |
 | `IMAGE_DOWNLOAD_TIMEOUT_SECONDS` | `12` | Timeout for remote image downloads |
-| `MODEL_WARMUP` | `false` | Pre-load all models at startup |
+| `MODEL_WARMUP` | `false` | Pre-load all models at startup when explicitly enabled |
 | `VLM_DEVICE` | `cuda:0` | Device for BLIP / Whisper |
 | `CUDA_VISIBLE_DEVICES` | `0` | NVIDIA GPU selection |
 

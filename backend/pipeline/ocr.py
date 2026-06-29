@@ -1,16 +1,4 @@
-"""OCR router â€” Surya primary, EasyOCR fallback.
-
-Routing logic:
-  1. Try Surya OCR first (pipeline/surya_ocr.py).
-  2. If Surya returns fragments â†’ use them exclusively, return.
-  3. If Surya returns nothing (unavailable, failure, or blank image) â†’
-     run EasyOCR (pipeline/easyocr_engine.py) and return its result.
-  4. Never run both engines on the same image.
-
-Public API (unchanged for all callers):
-  extract_ocr_text(image_path)          -> str
-  get_text_quality_score(text, caption) -> float [0, 1]
-"""
+"""Surya-only OCR router."""
 
 from __future__ import annotations
 
@@ -18,13 +6,10 @@ import logging
 import re
 from pathlib import Path
 
-from backend.pipeline.easyocr_engine import _get_readers, run_easyocr
-from backend.pipeline.surya_ocr import run_surya_ocr
+from backend.pipeline.surya_ocr import load_surya, run_surya_ocr
 
 logger = logging.getLogger(__name__)
-_easyocr_readers = _get_readers
 
-# â”€â”€ Regex helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 URL_PATTERN = re.compile(r"https?://|www\.", re.IGNORECASE)
 WHITESPACE_PATTERN = re.compile(r"\s+")
 
@@ -67,49 +52,34 @@ def _normalize_text(text: str) -> str:
     return WHITESPACE_PATTERN.sub(" ", text).strip()
 
 
-def _merge_fragments(*fragment_lists: list[str]) -> str:
+def _merge_fragments(fragments: list[str]) -> str:
     seen: set[str] = set()
     merged: list[str] = []
-    for fragments in fragment_lists:
-        for fragment in fragments:
-            norm = fragment.strip()
-            key = norm.lower()
-            if norm and key not in seen:
-                seen.add(key)
-                merged.append(norm)
+    for fragment in fragments:
+        norm = fragment.strip()
+        key = norm.lower()
+        if norm and key not in seen:
+            seen.add(key)
+            merged.append(norm)
     return _normalize_text(" ".join(merged))
 
 
-# â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-
 def extract_ocr_text(image_path: str) -> str:
-    """Extract multilingual OCR text â€” Surya primary, EasyOCR fallback.
-
-    Returns an empty string on any unrecoverable error.
-    """
-    logger.info("OCR inference started: %s", Path(image_path).name)
+    """Extract OCR text with Surya only."""
+    logger.info("Surya OCR inference started: %s", Path(image_path).name)
     try:
-        surya_fragments = run_surya_ocr(image_path)
-        if surya_fragments:
-            logger.info("Surya OCR pass: %d fragments (primary succeeded)", len(surya_fragments))
-            text = _merge_fragments(surya_fragments)
-        else:
-            logger.info("Surya OCR produced no text â€” running EasyOCR fallback")
-            easyocr_fragments = run_easyocr(image_path)
-            if easyocr_fragments:
-                logger.info("EasyOCR fallback: %d fragments", len(easyocr_fragments))
-            text = _merge_fragments(easyocr_fragments)
+        fragments = run_surya_ocr(image_path)
+        text = _merge_fragments(fragments)
     except Exception:
-        logger.exception("OCR inference failed")
+        logger.exception("Surya OCR inference failed")
         return ""
 
-    logger.info("OCR completed: %d chars", len(text))
+    logger.info("Surya OCR completed: %d chars", len(text))
     return text
 
 
 def get_text_quality_score(ocr_text: str, caption: str | None = None) -> float:
-    """Return a conservative spam/scam/promotional quality risk score [0, 1]."""
+    """Return a conservative spam/scam/promotional quality risk score in [0, 1]."""
     logger.info("Text quality scoring started")
     try:
         combined = _normalize_text(f"{ocr_text or ''} {caption or ''}").lower()
@@ -146,11 +116,6 @@ def get_text_quality_score(ocr_text: str, caption: str | None = None) -> float:
     return final_score
 
 
-# â”€â”€ Backward-compatibility shims â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# model_warmup.py calls ocr._get_ocr(); validate_models.py calls _get_readers().
-# Both delegate to easyocr_engine so callers see the live reader list.
-
-
-def _get_ocr() -> list:
-    """Alias for model_warmup.py â€” warms/returns EasyOCR readers."""
-    return _get_readers()
+def _get_ocr() -> bool:
+    """Warm Surya OCR for legacy callers."""
+    return load_surya()

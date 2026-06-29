@@ -1,17 +1,16 @@
-"""ML toxicity — disabled until a PyTorch ≥ 2.6 image is in use.
+"""ML toxicity - optional Hugging Face toxicity model integration.
 
-All public multilingual toxicity models on HuggingFace ship weights in
-PyTorch `.bin` (pickle) format, which transformers now blocks on PyTorch < 2.6
-(CVE-2025-32434).  The Dockerfile pins torch==2.5.1+cu124 so no compatible
-model can be loaded without a full image rebuild.
+This module remains disabled by default because the rule-based text safety
+stack already covers the active moderation categories, and enabling another
+transformers pipeline would add model downloads and memory pressure.
 
-Hate speech and toxicity are fully covered by:
-  - hard_block.py   — zero-tolerance keywords (runs before GPU inference)
-  - text_safety.py  — rule-based hate/harassment/political detection
-  - decision_engine — Tier 0-D thresholds on those rule scores
+Hate speech and toxicity are covered by:
+  - hard_block.py - zero-tolerance keywords
+  - text_safety.py - rule-based hate/harassment/political detection
+  - decision_engine - thresholds on those rule scores
 
-When torch is upgraded to ≥ 2.6 in the Dockerfile, re-enable this module by
-replacing `_DISABLED = True` with `_DISABLED = False` and setting _MODEL_ID.
+To enable it later, replace `_DISABLED = True` with `_DISABLED = False` and
+set _MODEL_ID to the selected toxicity model.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 _DISABLED = True
-_pipeline = None  # re-enable by setting _DISABLED = False and assigning a loaded HF pipeline
+_pipeline = None
 
 
 def _get_pipeline():

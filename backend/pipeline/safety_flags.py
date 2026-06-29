@@ -101,7 +101,7 @@ MODEL_VERSIONS: dict[str, str] = {
     "nsfw": "Falconsai/nsfw_image_detection",
     "siglip": "google/siglip2-large-patch16-384",
     "yolo": "yolo11x",
-    "ocr": "Surya+EasyOCR-hybrid",
+    "ocr": "Surya-only",
     "blip": "Salesforce/blip-image-captioning-large",
     "llama": "Meta-Llama-3.1-8B-Instruct-AWQ-INT4",
     "qwen": "Qwen/Qwen2.5-VL-7B-Instruct",
@@ -420,7 +420,7 @@ def analyze_image(
     adult_score = raw_adult
     detected_objects = [str(d.get("class", "")) for d in yolo_detections]
 
-    # â”€â”€ Stage 2: Smart OCR (GPU0) â€” Surya primary + EasyOCR fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Stage 2: OCR (Surya only)
     should_run_ocr, _ocr_metrics = text_detector.detect_text_regions(image_path, yolo_detections)
     if should_run_ocr:
         ocr_text: str = _safe_call(

@@ -37,7 +37,9 @@ def _get_state() -> dict[str, Any]:
             import torch
             from transformers import AutoFeatureExtractor, AutoModelForImageClassification
 
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            from core.runtime import get_runtime
+
+            device = get_runtime().torch_device
             dtype = torch.float16 if device != "cpu" else torch.float32
             logger.info("Loading OpenNSFW2 ViT-L on %s", device)
 
