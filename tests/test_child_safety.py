@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from pipeline.child_safety import analyze_child_safety, get_child_safety_scores
+from backend.pipeline.child_safety import analyze_child_safety, get_child_safety_scores
 
 
 class ChildSafetyTests(TestCase):

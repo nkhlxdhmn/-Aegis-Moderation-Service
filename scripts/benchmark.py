@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import statistics
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 
 def _measure(fn: Callable[[], object], iterations: int) -> list[float]:
@@ -42,7 +42,7 @@ def main() -> None:
     if not args.image.is_file():
         raise SystemExit(f"Image not found: {args.image}")
 
-    from pipeline.ocr import extract_ocr_text
+    from backend.pipeline.ocr import extract_ocr_text
 
     ocr_timings = _measure(lambda: extract_ocr_text(str(args.image)), args.iterations)
     print(_summary("OCR latency", ocr_timings))
@@ -50,7 +50,7 @@ def main() -> None:
     if args.ocr_only:
         return
 
-    from pipeline.safety_flags import analyze_image
+    from backend.pipeline.safety_flags import analyze_image
 
     e2e_timings = _measure(lambda: analyze_image(str(args.image), None), args.iterations)
     print(_summary("End-to-end latency", e2e_timings))

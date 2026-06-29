@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
-from pipeline import object_detector
+from backend.pipeline import object_detector
 
 
 class _TensorScalar:

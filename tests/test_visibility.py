@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from visibility import (
+from backend.visibility import (
     HIDDEN_MODERATION_STATUSES,
     VISIBLE_MODERATION_STATUSES,
     filter_visible_posts,

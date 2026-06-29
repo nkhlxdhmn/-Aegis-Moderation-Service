@@ -68,3 +68,7 @@ surya-ocr-main/
 Thumbs.db
 .idea/
 .vscode/
+
+# Frontend dependencies and generated bundles
+frontend/node_modules/
+frontend/dist/

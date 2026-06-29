@@ -3,16 +3,16 @@
 Processes N images concurrently (data-parallel) rather than sequentially.
 Batch size is chosen dynamically by queue depth:
 
-  queue_depth ≤ 5   → batch_size = 4
-  queue_depth 6–20  → batch_size = 8
-  queue_depth > 20  → batch_size = 16
+  queue_depth â‰¤ 5   â†’ batch_size = 4
+  queue_depth 6â€“20  â†’ batch_size = 8
+  queue_depth > 20  â†’ batch_size = 16
 
 Each image still goes through the full single-image pipeline (safety_flags.analyze_image)
 in its own thread.  The benefit is that GPU forward passes from different images
 interleave in the CUDA stream, reducing overall wall-clock time for a burst of work.
 
 Usage:
-    from pipeline.batch_analyzer import analyze_batch, batch_size_for_depth
+    from backend.pipeline.batch_analyzer import analyze_batch, batch_size_for_depth
 
     batch = [(path1, caption1), (path2, caption2), ...]
     results = analyze_batch(batch, queue_depth=queue_service.get_depth())
@@ -24,15 +24,15 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Sequence
 
-from pipeline.safety_flags import ModerationPipelineResult, analyze_image
+from backend.pipeline.safety_flags import ModerationPipelineResult, analyze_image
 
 logger = logging.getLogger(__name__)
 
 # Maximum concurrent images per batch tier
 _BATCH_SIZES = (
-    (20, 8),    # queue_depth ≤ 20 → 8
-    (50, 16),   # queue_depth ≤ 50 → 16
-    (None, 32), # queue_depth > 50 → 32
+    (20, 8),    # queue_depth â‰¤ 20 â†’ 8
+    (50, 16),   # queue_depth â‰¤ 50 â†’ 16
+    (None, 32), # queue_depth > 50 â†’ 32
 )
 _MIN_BATCH = 4
 
@@ -89,7 +89,7 @@ def analyze_batch(
             results[idx] = future.result()
         except Exception:
             logger.exception("Batch item %d failed", idx)
-            from pipeline.safety_flags import _default_scores, ModerationPipelineResult
+            from backend.pipeline.safety_flags import _default_scores, ModerationPipelineResult
             results[idx] = ModerationPipelineResult(
                 scores=_default_scores(),
                 category_scores={},

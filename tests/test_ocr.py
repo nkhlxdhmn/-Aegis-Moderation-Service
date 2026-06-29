@@ -1,14 +1,14 @@
 """Tests for the hybrid OCR pipeline (Surya primary + EasyOCR fallback).
 
 Test cases:
-  1. Surya available    — Surya runs, EasyOCR is NOT called.
-  2. Surya unavailable  — EasyOCR fallback is called and returns text.
-  3. Empty image        — returns "" without crashing.
-  4. Bad image path     — returns "" without crashing.
+  1. Surya available    â€” Surya runs, EasyOCR is NOT called.
+  2. Surya unavailable  â€” EasyOCR fallback is called and returns text.
+  3. Empty image        â€” returns "" without crashing.
+  4. Bad image path     â€” returns "" without crashing.
 
 Patching note: pipeline/ocr.py binds names at import time via
-  from pipeline.surya_ocr import run_surya_ocr
-  from pipeline.easyocr_engine import run_easyocr
+  from backend.pipeline.surya_ocr import run_surya_ocr
+  from backend.pipeline.easyocr_engine import run_easyocr
 so patches must target pipeline.ocr.run_surya_ocr / pipeline.ocr.run_easyocr,
 NOT the source-module paths.
 """
@@ -22,10 +22,10 @@ from unittest import TestCase
 from unittest.mock import patch
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _write_blank_png() -> str:
-    """Write a 64×64 white PNG to a temp file and return the path."""
+    """Write a 64Ã—64 white PNG to a temp file and return the path."""
     from PIL import Image as PILImage
     buf = io.BytesIO()
     PILImage.new("RGB", (64, 64), color=(255, 255, 255)).save(buf, format="PNG")
@@ -35,7 +35,7 @@ def _write_blank_png() -> str:
     return path
 
 
-# ── Test 1: Surya available → EasyOCR NOT called ─────────────────────────────
+# â”€â”€ Test 1: Surya available â†’ EasyOCR NOT called â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestSuryaAvailablePath(TestCase):
     def test_surya_result_returned_easyocr_not_called(self) -> None:
@@ -44,10 +44,10 @@ class TestSuryaAvailablePath(TestCase):
         surya_fragments = ["Hello World", "Test text from Surya"]
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=surya_fragments) as mock_surya, \
-                 patch("pipeline.ocr.run_easyocr") as mock_easyocr:
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=surya_fragments) as mock_surya, \
+                 patch("backend.pipeline.ocr.run_easyocr") as mock_easyocr:
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             mock_surya.assert_called_once_with(tmp_path)
@@ -62,10 +62,10 @@ class TestSuryaAvailablePath(TestCase):
         tmp_path = _write_blank_png()
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=["hello", "Hello", "HELLO"]), \
-                 patch("pipeline.ocr.run_easyocr") as mock_easyocr:
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=["hello", "Hello", "HELLO"]), \
+                 patch("backend.pipeline.ocr.run_easyocr") as mock_easyocr:
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             mock_easyocr.assert_not_called()
@@ -74,7 +74,7 @@ class TestSuryaAvailablePath(TestCase):
             os.unlink(tmp_path)
 
 
-# ── Test 2: Surya unavailable → EasyOCR fallback ────────────────────────────
+# â”€â”€ Test 2: Surya unavailable â†’ EasyOCR fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestSuryaUnavailableFallback(TestCase):
     def test_easyocr_runs_when_surya_returns_empty(self) -> None:
@@ -83,10 +83,10 @@ class TestSuryaUnavailableFallback(TestCase):
         easyocr_fragments = ["Indic text from EasyOCR"]
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=[]) as mock_surya, \
-                 patch("pipeline.ocr.run_easyocr", return_value=easyocr_fragments) as mock_easyocr:
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]) as mock_surya, \
+                 patch("backend.pipeline.ocr.run_easyocr", return_value=easyocr_fragments) as mock_easyocr:
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             mock_surya.assert_called_once_with(tmp_path)
@@ -100,10 +100,10 @@ class TestSuryaUnavailableFallback(TestCase):
         tmp_path = _write_blank_png()
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=[]), \
-                 patch("pipeline.ocr.run_easyocr", return_value=["fallback text"]) as mock_easyocr:
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]), \
+                 patch("backend.pipeline.ocr.run_easyocr", return_value=["fallback text"]) as mock_easyocr:
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             mock_easyocr.assert_called_once()
@@ -116,10 +116,10 @@ class TestSuryaUnavailableFallback(TestCase):
         tmp_path = _write_blank_png()
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=[]), \
-                 patch("pipeline.ocr.run_easyocr", return_value=[]):
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]), \
+                 patch("backend.pipeline.ocr.run_easyocr", return_value=[]):
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             self.assertEqual(result, "")
@@ -127,7 +127,7 @@ class TestSuryaUnavailableFallback(TestCase):
             os.unlink(tmp_path)
 
 
-# ── Test 3: Empty image (blank PNG) ──────────────────────────────────────────
+# â”€â”€ Test 3: Empty image (blank PNG) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestEmptyImage(TestCase):
     def test_blank_image_does_not_crash(self) -> None:
@@ -135,10 +135,10 @@ class TestEmptyImage(TestCase):
         tmp_path = _write_blank_png()
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=[]), \
-                 patch("pipeline.ocr.run_easyocr", return_value=[]):
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]), \
+                 patch("backend.pipeline.ocr.run_easyocr", return_value=[]):
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             self.assertIsInstance(result, str)
@@ -151,10 +151,10 @@ class TestEmptyImage(TestCase):
         tmp_path = _write_blank_png()
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=[]), \
-                 patch("pipeline.ocr.run_easyocr", return_value=[]):
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]), \
+                 patch("backend.pipeline.ocr.run_easyocr", return_value=[]):
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(tmp_path)
 
             self.assertIsInstance(result, str)
@@ -162,15 +162,15 @@ class TestEmptyImage(TestCase):
             os.unlink(tmp_path)
 
 
-# ── Test 4: Bad image path ────────────────────────────────────────────────────
+# â”€â”€ Test 4: Bad image path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestBadImagePath(TestCase):
     def test_nonexistent_path_returns_empty_string(self) -> None:
         """A path that does not exist must return '' without raising."""
-        with patch("pipeline.ocr.run_surya_ocr", return_value=[]), \
-             patch("pipeline.ocr.run_easyocr", return_value=[]):
+        with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]), \
+             patch("backend.pipeline.ocr.run_easyocr", return_value=[]):
 
-            from pipeline.ocr import extract_ocr_text
+            from backend.pipeline.ocr import extract_ocr_text
             result = extract_ocr_text("/nonexistent/totally/missing.jpg")
 
         self.assertIsInstance(result, str)
@@ -183,10 +183,10 @@ class TestBadImagePath(TestCase):
         os.close(fd)
 
         try:
-            with patch("pipeline.ocr.run_surya_ocr", return_value=[]), \
-                 patch("pipeline.ocr.run_easyocr", return_value=[]):
+            with patch("backend.pipeline.ocr.run_surya_ocr", return_value=[]), \
+                 patch("backend.pipeline.ocr.run_easyocr", return_value=[]):
 
-                from pipeline.ocr import extract_ocr_text
+                from backend.pipeline.ocr import extract_ocr_text
                 result = extract_ocr_text(path)
 
             self.assertIsInstance(result, str)
@@ -196,25 +196,25 @@ class TestBadImagePath(TestCase):
 
     def test_surya_engine_handles_nonexistent_path(self) -> None:
         """run_surya_ocr() must return [] for a nonexistent path, never raise."""
-        from pipeline.surya_ocr import run_surya_ocr
+        from backend.pipeline.surya_ocr import run_surya_ocr
         result = run_surya_ocr("/nonexistent/totally/missing.jpg")
         self.assertIsInstance(result, list)
         self.assertEqual(result, [])
 
     def test_easyocr_engine_handles_nonexistent_path(self) -> None:
         """run_easyocr() must return [] for a nonexistent path, never raise."""
-        from pipeline.easyocr_engine import run_easyocr
+        from backend.pipeline.easyocr_engine import run_easyocr
         result = run_easyocr("/nonexistent/totally/missing.jpg")
         self.assertIsInstance(result, list)
         self.assertEqual(result, [])
 
 
-# ── Surya engine unit tests ───────────────────────────────────────────────────
+# â”€â”€ Surya engine unit tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestSuryaEngine(TestCase):
     def test_run_surya_ocr_returns_empty_when_no_predictor(self) -> None:
         """run_surya_ocr() returns [] when predictor is None (package absent)."""
-        import pipeline.surya_ocr as _mod
+        import backend.pipeline.surya_ocr as _mod
         original = _mod._predictor
 
         try:
@@ -227,7 +227,7 @@ class TestSuryaEngine(TestCase):
 
     def test_is_available_reflects_predictor_state(self) -> None:
         """is_available() returns True iff _predictor is not None."""
-        import pipeline.surya_ocr as _mod
+        import backend.pipeline.surya_ocr as _mod
         original = _mod._predictor
 
         try:
@@ -241,7 +241,7 @@ class TestSuryaEngine(TestCase):
 
     def test_load_surya_returns_bool(self) -> None:
         """load_surya() must return a bool in all cases."""
-        import pipeline.surya_ocr as _mod
+        import backend.pipeline.surya_ocr as _mod
         original = _mod._predictor
 
         try:
@@ -252,12 +252,12 @@ class TestSuryaEngine(TestCase):
             _mod._predictor = original
 
 
-# ── EasyOCR engine unit tests ────────────────────────────────────────────────
+# â”€â”€ EasyOCR engine unit tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestEasyOCREngine(TestCase):
     def test_run_easyocr_returns_empty_when_no_readers(self) -> None:
         """run_easyocr() returns [] when no readers are loaded."""
-        import pipeline.easyocr_engine as _mod
+        import backend.pipeline.easyocr_engine as _mod
         original = _mod._readers[:]
 
         try:
@@ -271,7 +271,7 @@ class TestEasyOCREngine(TestCase):
 
     def test_is_available_false_when_readers_empty(self) -> None:
         """is_available() returns False when reader list is empty."""
-        import pipeline.easyocr_engine as _mod
+        import backend.pipeline.easyocr_engine as _mod
         original = _mod._readers[:]
 
         try:
@@ -283,7 +283,7 @@ class TestEasyOCREngine(TestCase):
 
     def test_is_available_true_when_readers_present(self) -> None:
         """is_available() returns True when reader list is non-empty."""
-        import pipeline.easyocr_engine as _mod
+        import backend.pipeline.easyocr_engine as _mod
         original = _mod._readers[:]
 
         try:
@@ -295,11 +295,11 @@ class TestEasyOCREngine(TestCase):
             _mod._readers.extend(original)
 
 
-# ── Text quality scoring tests (unchanged behaviour) ──────────────────────────
+# â”€â”€ Text quality scoring tests (unchanged behaviour) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TextQualityTests(TestCase):
     def test_clean_text_scores_zero(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         score = get_text_quality_score(
             "Brihadeeswarar Temple inscription",
             "Ancient Chola heritage",
@@ -307,7 +307,7 @@ class TextQualityTests(TestCase):
         self.assertEqual(score, 0.0)
 
     def test_spam_and_promotional_text_scores_higher(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         score = get_text_quality_score(
             "Click here subscribe now",
             "Buy now sale http://a.test http://b.test http://c.test",
@@ -315,7 +315,7 @@ class TextQualityTests(TestCase):
         self.assertGreaterEqual(score, 0.6)
 
     def test_fake_history_text_scores_higher(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         score = get_text_quality_score(
             "Aliens built this temple proof historians lied",
             None,
@@ -323,12 +323,12 @@ class TextQualityTests(TestCase):
         self.assertGreaterEqual(score, 0.35)
 
     def test_empty_inputs_score_zero(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         self.assertEqual(get_text_quality_score("", None), 0.0)
         self.assertEqual(get_text_quality_score("", ""), 0.0)
 
     def test_score_is_clamped_to_unit_interval(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         score = get_text_quality_score(
             "free money guaranteed income click here subscribe now buy now "
             "sale discount http://a.test http://b.test http://c.test "

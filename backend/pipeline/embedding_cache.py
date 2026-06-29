@@ -1,5 +1,5 @@
 """
-embedding_cache.py – FAISS-based semantic similarity cache.
+embedding_cache.py â€“ FAISS-based semantic similarity cache.
 
 Uses SigLIP2 embeddings (via clip_engine) stored in a flat inner-product
 index for approximate cosine-similarity lookups.  All mutations are protected
@@ -59,7 +59,7 @@ except ImportError:
     _faiss = None  # type: ignore[assignment]
     _FAISS_AVAILABLE = False
     logger.warning(
-        "faiss is not installed – embedding_cache is disabled. "
+        "faiss is not installed â€“ embedding_cache is disabled. "
         "Install faiss-cpu or faiss-gpu to enable semantic caching."
     )
 
@@ -101,7 +101,7 @@ def _load_or_create_index(dim: int):
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "Failed to load FAISS index from %s: %s – creating new index.",
+                "Failed to load FAISS index from %s: %s â€“ creating new index.",
                 FAISS_INDEX_FILE,
                 exc,
             )
@@ -119,7 +119,7 @@ def _load_or_create_index(dim: int):
             logger.debug("Loaded %d metadata entries from %s", len(_metadata), METADATA_FILE)
         except Exception as exc:  # noqa: BLE001
             logger.warning(
-                "Failed to load metadata from %s: %s – starting empty.", METADATA_FILE, exc
+                "Failed to load metadata from %s: %s â€“ starting empty.", METADATA_FILE, exc
             )
             _metadata = []
     else:
@@ -216,7 +216,7 @@ def get_image_embedding(image_path: str) -> "np.ndarray | None":
         ``None`` on any failure.
     """
     try:
-        from pipeline import clip_engine  # type: ignore[import]
+        from backend.pipeline import clip_engine  # type: ignore[import]
 
         embedding = clip_engine.get_image_embedding(image_path)
         if embedding is None:
@@ -365,7 +365,7 @@ def store_image(
             _persist()
 
     logger.debug(
-        "Stored embedding for '%s' → decision=%s (cache_size=%d)",
+        "Stored embedding for '%s' â†’ decision=%s (cache_size=%d)",
         image_path,
         decision,
         len(_metadata),

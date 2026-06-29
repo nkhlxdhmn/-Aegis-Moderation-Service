@@ -1,7 +1,7 @@
 """Tests that all production models can be imported and their singleton state
 objects are returned without raising exceptions.
 
-These tests do NOT load real model weights â€” they mock the heavy library
+These tests do NOT load real model weights Ã¢â‚¬â€ they mock the heavy library
 imports so they run in CPU-only CI environments without VRAM.
 """
 
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 def _make_torch_mock(device_name: str = "cuda:0") -> MagicMock:
     torch = MagicMock()
@@ -31,7 +31,7 @@ def _mock_module(name: str, obj: object | None = None) -> MagicMock:
     return mod  # type: ignore[return-value]
 
 
-# â”€â”€ OpenNSFW2 (Falconsai/nsfw_image_detection) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ OpenNSFW2 (Falconsai/nsfw_image_detection) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestNSFWModelLoading:
     def test_get_state_returns_singleton(self) -> None:
@@ -46,13 +46,13 @@ class TestNSFWModelLoading:
 
         with (
             patch.dict("sys.modules", {"torch": torch_mock, "transformers": transformers_mock}),
-            patch("pipeline.nsfw._state", None),
-            patch("pipeline.nsfw._state_lock"),
+            patch("backend.pipeline.nsfw._state", None),
+            patch("backend.pipeline.nsfw._state_lock"),
         ):
-            from pipeline import nsfw
+            from backend.pipeline import nsfw
             # Reset singleton so the mock path is exercised
             nsfw._state = None
-            with patch("pipeline.nsfw._state_lock", MagicMock()):
+            with patch("backend.pipeline.nsfw._state_lock", MagicMock()):
                 with patch.object(
                     transformers_mock.AutoFeatureExtractor, "from_pretrained",
                     return_value=processor_mock
@@ -64,53 +64,53 @@ class TestNSFWModelLoading:
                         pass  # Loading path tested by integration test
 
     def test_model_id_constant(self) -> None:
-        from pipeline.nsfw import NSFW_MODEL_ID
+        from backend.pipeline.nsfw import NSFW_MODEL_ID
         assert NSFW_MODEL_ID == "Falconsai/nsfw_image_detection"
 
     def test_device_constant(self) -> None:
-        from pipeline.nsfw import DEVICE
+        from backend.pipeline.nsfw import DEVICE
         assert DEVICE == "cuda:0"
 
 
-# â”€â”€ SigLIP2 (google/siglip2-large-patch16-384) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ SigLIP2 (google/siglip2-large-patch16-384) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestSigLIP2ModelLoading:
     def test_model_id_constant(self) -> None:
-        from pipeline.clip_engine import SIGLIP_MODEL_ID
+        from backend.pipeline.clip_engine import SIGLIP_MODEL_ID
         assert SIGLIP_MODEL_ID == "google/siglip2-large-patch16-384"
 
     def test_device_constant(self) -> None:
-        from pipeline.clip_engine import DEVICE
+        from backend.pipeline.clip_engine import DEVICE
         assert DEVICE == "cuda:0"
 
     def test_heritage_prompts_not_empty(self) -> None:
-        from pipeline.clip_engine import HERITAGE_PROMPTS
+        from backend.pipeline.clip_engine import HERITAGE_PROMPTS
         assert len(HERITAGE_PROMPTS) >= 8, "Expected at least 8 heritage prompts for coverage"
 
     def test_category_prompts_cover_all_categories(self) -> None:
-        from pipeline.clip_engine import CATEGORY_PROMPTS
+        from backend.pipeline.clip_engine import CATEGORY_PROMPTS
         assert len(CATEGORY_PROMPTS) >= 5, "Expected category prompts for all content types"
 
     def test_state_initially_none(self) -> None:
-        from pipeline import clip_engine
+        from backend.pipeline import clip_engine
         # We're not checking the value; just that the attribute exists
         assert hasattr(clip_engine, "_state")
 
 
-# â”€â”€ YOLO11x â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ YOLO11x Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestYOLOModelLoading:
     def test_default_model_name(self) -> None:
-        from pipeline.object_detector import YOLO_MODEL_DEFAULT
+        from backend.pipeline.object_detector import YOLO_MODEL_DEFAULT
         assert YOLO_MODEL_DEFAULT == "yolo11x.pt"
 
     def test_device_constant(self) -> None:
-        from pipeline.object_detector import DEVICE
+        from backend.pipeline.object_detector import DEVICE
         assert DEVICE == "cuda:0"
 
     def test_moderation_classes_complete(self) -> None:
-        from pipeline.object_detector import MODERATION_OBJECT_CLASSES
-        # Heritage classes (temple, idol, etc.) removed â€” they don't exist in
+        from backend.pipeline.object_detector import MODERATION_OBJECT_CLASSES
+        # Heritage classes (temple, idol, etc.) removed Ã¢â‚¬â€ they don't exist in
         # COCO-80 and would produce hallucinated detections with yolo11x.
         # Heritage context is handled by SigLIP2 prompts instead.
         required = {"person", "child", "weapon", "fire", "crowd"}
@@ -119,86 +119,86 @@ class TestYOLOModelLoading:
         )
 
     def test_confidence_threshold_is_float(self) -> None:
-        from pipeline.object_detector import CONFIDENCE_THRESHOLD
+        from backend.pipeline.object_detector import CONFIDENCE_THRESHOLD
         assert 0.0 < CONFIDENCE_THRESHOLD < 1.0
 
     def test_state_initially_none(self) -> None:
-        from pipeline import object_detector
+        from backend.pipeline import object_detector
         assert hasattr(object_detector, "_state")
 
 
-# â”€â”€ PaddleOCR PP-OCRv5 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ PaddleOCR PP-OCRv5 Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestOCRModelLoading:
     def test_get_ocr_function_exists(self) -> None:
-        from pipeline.ocr import _get_ocr
+        from backend.pipeline.ocr import _get_ocr
         assert callable(_get_ocr)
 
     def test_singleton_attribute_exists(self) -> None:
-        from pipeline import ocr
+        from backend.pipeline import ocr
         assert hasattr(ocr, "_easyocr_readers")
 
     def test_extract_returns_string_type(self) -> None:
-        from pipeline.ocr import extract_ocr_text
+        from backend.pipeline.ocr import extract_ocr_text
         # Returns empty string when image does not exist.
         result = extract_ocr_text("/nonexistent/path.jpg")
         assert isinstance(result, str)
 
     def test_text_quality_score_range(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         score = get_text_quality_score("click here free money buy now!!! http://spam.com")
         assert 0.0 <= score <= 1.0
 
     def test_text_quality_safe_text(self) -> None:
-        from pipeline.ocr import get_text_quality_score
+        from backend.pipeline.ocr import get_text_quality_score
         score = get_text_quality_score("Shiva Lingam at the ancient Shaivite temple of Ellora")
         assert score < 0.30, f"Safe cultural text scored too high: {score}"
 
 
-# â”€â”€ BLIP-2 OPT-2.7B â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ BLIP-2 OPT-2.7B Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestBLIP2ModelLoading:
     def test_model_id_constant(self) -> None:
-        from pipeline.vlm_engine import BLIP_MODEL_ID
+        from backend.pipeline.vlm_engine import BLIP_MODEL_ID
         assert BLIP_MODEL_ID == "Salesforce/blip-image-captioning-large"
 
     def test_model_id_legacy_alias(self) -> None:
-        from pipeline.vlm_engine import BLIP2_MODEL_ID, BLIP_MODEL_ID
+        from backend.pipeline.vlm_engine import BLIP2_MODEL_ID, BLIP_MODEL_ID
         assert BLIP2_MODEL_ID == BLIP_MODEL_ID  # backward-compat alias
 
     def test_device_is_cuda(self) -> None:
-        from pipeline.vlm_engine import DEVICE
+        from backend.pipeline.vlm_engine import DEVICE
         assert DEVICE.startswith("cuda:")
 
     def test_state_initially_none(self) -> None:
-        from pipeline import vlm_engine
+        from backend.pipeline import vlm_engine
         assert hasattr(vlm_engine, "_blip_state")
 
     def test_generate_caption_returns_empty_on_bad_path(self) -> None:
-        from pipeline.vlm_engine import generate_caption
+        from backend.pipeline.vlm_engine import generate_caption
         result = generate_caption("/nonexistent/image.jpg")
         assert isinstance(result, str)
 
 
-# â”€â”€ Llama-3.1-8B AWQ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ Llama-3.1-8B AWQ Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestLlamaModelLoading:
     def test_model_id_constant(self) -> None:
-        from pipeline.vlm_engine import LLAMA_MODEL_ID
+        from backend.pipeline.vlm_engine import LLAMA_MODEL_ID
         assert "Meta-Llama-3.1-8B" in LLAMA_MODEL_ID or "llama" in LLAMA_MODEL_ID.lower()
 
     def test_device_is_cuda(self) -> None:
-        from pipeline.vlm_engine import DEVICE
+        from backend.pipeline.vlm_engine import DEVICE
         assert DEVICE.startswith("cuda:")
 
     def test_state_initially_none(self) -> None:
-        from pipeline import vlm_engine
+        from backend.pipeline import vlm_engine
         # Llama inference was removed; only BLIP singleton state remains.
         assert hasattr(vlm_engine, "_blip_state")
         assert not hasattr(vlm_engine, "_llama_state")
 
     def test_reason_moderation_returns_dict_on_failure(self) -> None:
-        from pipeline.vlm_engine import reason_moderation
+        from backend.pipeline.vlm_engine import reason_moderation
         # blip_caption is the canonical param name; blip2_caption is a legacy alias
         result = reason_moderation(
             nsfw_score=0.1,
@@ -216,25 +216,25 @@ class TestLlamaModelLoading:
         assert result["decision"] in ("APPROVED", "REJECTED", "UNDER_REVIEW")
 
 
-# â”€â”€ model_warmup integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ model_warmup integration Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-# â”€â”€ Text classifier hook (pipeline/text_classifier.py) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Ã¢â€â‚¬Ã¢â€â‚¬ Text classifier hook (pipeline/text_classifier.py) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class TestTextClassifier:
     def test_public_functions_exist(self) -> None:
-        from pipeline.text_classifier import classify_text, is_available, load_text_classifier
+        from backend.pipeline.text_classifier import classify_text, is_available, load_text_classifier
         assert callable(classify_text)
         assert callable(is_available)
         assert callable(load_text_classifier)
 
     def test_disabled_result_is_neutral(self) -> None:
-        from pipeline.text_classifier import _DISABLED_RESULT
+        from backend.pipeline.text_classifier import _DISABLED_RESULT
         assert _DISABLED_RESULT["label"] == "non_abusive"
         assert _DISABLED_RESULT["abuse_score"] == 0.0
         assert _DISABLED_RESULT["disabled"] is True
 
     def test_classify_text_when_disabled_returns_neutral(self) -> None:
-        from pipeline import text_classifier
+        from backend.pipeline import text_classifier
         text_classifier.load_text_classifier()
         if not text_classifier.is_available():
             result = text_classifier.classify_text("some potentially abusive text")
@@ -243,7 +243,7 @@ class TestTextClassifier:
             assert result["abuse_score"] == 0.0
 
     def test_classify_empty_string_never_raises(self) -> None:
-        from pipeline.text_classifier import classify_text
+        from backend.pipeline.text_classifier import classify_text
         result = classify_text("")
         assert isinstance(result, dict)
         assert "label" in result
@@ -252,7 +252,7 @@ class TestTextClassifier:
 
     def test_get_model_dir_respects_env_var(self) -> None:
         import os
-        from pipeline.text_classifier import _get_model_dir
+        from backend.pipeline.text_classifier import _get_model_dir
         os.environ["TEXT_CLASSIFIER_MODEL_DIR"] = "/tmp/test_model"
         try:
             from pathlib import Path
@@ -263,7 +263,7 @@ class TestTextClassifier:
 
 class TestWarmupFunctions:
     def test_warmup_functions_exist(self) -> None:
-        from model_warmup import (
+        from backend.model_warmup import (
             load_nsfw,
             load_siglip,
             load_yolo,
@@ -281,13 +281,13 @@ class TestWarmupFunctions:
         assert callable(model_status)
 
     def test_model_status_not_loaded_initially(self) -> None:
-        import model_warmup
+        import backend.model_warmup as model_warmup
         model_warmup._models_loaded = False
         model_warmup._last_error = None
         assert model_warmup.model_status() == "not_loaded"
 
     def test_model_status_error(self) -> None:
-        import model_warmup
+        import backend.model_warmup as model_warmup
         model_warmup._models_loaded = False
         model_warmup._last_error = "OOM"
         assert model_warmup.model_status() == "error"
@@ -295,9 +295,9 @@ class TestWarmupFunctions:
         model_warmup._last_error = None
 
     def test_legacy_alias_load_nudenet(self) -> None:
-        from model_warmup import load_nudenet, load_nsfw
+        from backend.model_warmup import load_nudenet, load_nsfw
         assert load_nudenet is load_nsfw
 
     def test_legacy_alias_load_openclip(self) -> None:
-        from model_warmup import load_openclip, load_siglip
+        from backend.model_warmup import load_openclip, load_siglip
         assert load_openclip is load_siglip

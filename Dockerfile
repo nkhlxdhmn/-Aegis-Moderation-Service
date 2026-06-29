@@ -1,4 +1,12 @@
-﻿# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7
+FROM node:22-alpine AS frontend-build
+
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -32,11 +40,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     && python -m pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 --index-url https://download.pytorch.org/whl/cu124 \
     && python -m pip install -r requirements.txt
 
+COPY --chown=aegis:aegis --from=frontend-build /frontend/dist ./frontend/dist
 COPY --chown=aegis:aegis backend ./backend
-COPY --chown=aegis:aegis frontend ./frontend
-COPY --chown=aegis:aegis pipeline ./pipeline
-COPY --chown=aegis:aegis models ./models
-COPY --chown=aegis:aegis main.py model_warmup.py validate_models.py visibility.py ./
 
 RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \
     && chown -R aegis:aegis /home/aegis /app
@@ -47,4 +52,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

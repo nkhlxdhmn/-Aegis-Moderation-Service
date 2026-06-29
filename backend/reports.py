@@ -165,7 +165,7 @@ def extract_objects(raw_objects: Any) -> list[str]:
 
 
 def build_report(pipeline_result: Any) -> dict[str, Any]:
-    """Build the public standalone moderation report from pipeline output."""
+    """Build the public standalone moderation report from backend.pipeline output."""
 
     raw_scores: Mapping[str, Any] = getattr(pipeline_result, "scores", {}) or {}
     category_scores: Mapping[str, Any] = getattr(pipeline_result, "category_scores", {}) or {}

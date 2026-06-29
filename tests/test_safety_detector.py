@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from pipeline.safety_detector import analyze_safety, get_safety_scores
+from backend.pipeline.safety_detector import analyze_safety, get_safety_scores
 
 
 class SafetyDetectorTests(TestCase):
@@ -55,7 +55,7 @@ class SafetyDetectorTests(TestCase):
         # Combined score should exceed either individual signal (agreement bonus),
         # but not balloon to 1.0 the way the old 1-(1-a)(1-b) formula did.
         # Formula: max(yolo, clip) * 0.90 + geometric_mean * 0.15
-        #        = 0.6 * 0.90 + sqrt(0.6*0.5) * 0.15 ≈ 0.622
+        #        = 0.6 * 0.90 + sqrt(0.6*0.5) * 0.15 â‰ˆ 0.622
         self.assertGreater(result["weapon_score"], 0.5)
         self.assertLessEqual(result["weapon_score"], 1.0)
 

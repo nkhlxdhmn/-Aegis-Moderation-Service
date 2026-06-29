@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from pipeline import pii_detector
-from pipeline.pii_detector import analyze_pii, get_pii_scores
+from backend.pipeline import pii_detector
+from backend.pipeline.pii_detector import analyze_pii, get_pii_scores
 
 
 class PiiDetectorTests(TestCase):
@@ -89,7 +89,7 @@ class PiiDetectorTests(TestCase):
             SimpleNamespace(entity_type="PHONE_NUMBER"),
         ]
 
-        with patch("pipeline.pii_detector._get_presidio_analyzer", return_value=analyzer):
+        with patch("backend.pipeline.pii_detector._get_presidio_analyzer", return_value=analyzer):
             result = analyze_pii("contact details", None)
 
         self.assertTrue(result["email_detected"])
@@ -99,7 +99,7 @@ class PiiDetectorTests(TestCase):
         analyzer = Mock()
         analyzer.analyze.side_effect = RuntimeError("presidio failed")
 
-        with patch("pipeline.pii_detector._get_presidio_analyzer", return_value=analyzer):
+        with patch("backend.pipeline.pii_detector._get_presidio_analyzer", return_value=analyzer):
             result = analyze_pii("email user@example.com", None)
 
         self.assertTrue(result["email_detected"])

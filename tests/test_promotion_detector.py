@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from pipeline.promotion_detector import analyze_promotion, get_promotion_scores
+from backend.pipeline.promotion_detector import analyze_promotion, get_promotion_scores
 
 
 class PromotionDetectorTests(TestCase):

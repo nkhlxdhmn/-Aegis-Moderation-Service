@@ -41,3 +41,5 @@ postman/
 demo/
 docs/
 tests/
+frontend/node_modules/
+frontend/dist/

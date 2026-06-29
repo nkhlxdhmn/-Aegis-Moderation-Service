@@ -1,4 +1,4 @@
-﻿"""Central orchestration for Aegis image moderation signals.
+"""Central orchestration for Aegis image moderation signals.
 
 Pipeline stages (Phase 5 â€” maximum accuracy):
   Stage 0   â€” Image quality gate
@@ -37,7 +37,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pipeline import (
+from backend.pipeline import (
     child_safety,
     circuit_breaker as cb,
     clip_engine,
@@ -63,7 +63,7 @@ from pipeline import (
     uncertainty as uncertainty_module,
     vlm_engine,
 )
-from pipeline.calibration import calibrate_yolo
+from backend.pipeline.calibration import calibrate_yolo
 
 logger = logging.getLogger(__name__)
 

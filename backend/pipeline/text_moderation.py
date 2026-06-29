@@ -1,4 +1,4 @@
-﻿"""Text post moderation pipeline for Aegis.
+"""Text post moderation pipeline for Aegis.
 
 Models (all lazy-loaded, each falls back gracefully if unavailable):
   Detoxify multilingual â€” ML toxicity across 7 dimensions (obscene, threat,
@@ -245,7 +245,7 @@ def _detect_language(text: str) -> str:
 
 def _text_rule_scores(text: str) -> dict[str, float]:
     """Reuse existing text_safety phrase rules."""
-    from pipeline.text_safety import analyze_text_safety
+    from backend.pipeline.text_safety import analyze_text_safety
     return analyze_text_safety(ocr_text=text, caption=None)
 
 
@@ -475,7 +475,7 @@ def moderate_text(
         )
 
         # Stage 8 â€” Llama reasoning
-        from pipeline.vlm_engine import reason_text_moderation
+        from backend.pipeline.vlm_engine import reason_text_moderation
         llama_result = reason_text_moderation(
             text,
             adult_score=pre_scores["adult_score"],

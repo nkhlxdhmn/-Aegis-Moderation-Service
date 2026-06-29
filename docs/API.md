@@ -1,27 +1,20 @@
-﻿# API
+# API
 
 Base URL: `http://localhost:8000`
 
-## `GET /api/v1/health`
+## Health
 
-Returns service status.
+`GET /api/v1/health` returns service status.
 
-```json
-{
-  "status": "ok",
-  "service": "Aegis Moderation",
-  "version": "1.0.0",
-  "mode": "standalone"
-}
-```
+`GET /api/v1/model-health` reports lazy-loading model readiness.
 
-## `GET /api/v1/model-health`
+`GET /api/v1/metrics` and `GET /metrics` expose Prometheus metrics.
 
-Reports model loading mode. Models are lazy-loaded or downloaded by their libraries on first analysis.
+## Moderation Endpoints
 
-## `POST /api/v1/analyze`
+### `POST /api/v1/moderate/image`
 
-Multipart form endpoint used by the browser UI.
+Multipart form endpoint for image uploads or public HTTPS image URLs.
 
 Fields:
 
@@ -31,31 +24,80 @@ Fields:
 
 Provide exactly one of `file` or `image_url`.
 
-## `POST /api/v1/moderate`
+### `POST /api/v1/moderate/video`
 
-JSON endpoint for image URL analysis.
+Multipart form endpoint for video uploads.
+
+Fields:
+
+- `file`: required video upload.
+- `caption`: optional context string.
+
+### `POST /api/v1/moderate/text`
+
+JSON endpoint for plain text moderation.
 
 ```json
 {
-  "image_url": "https://example.com/image.jpg",
-  "caption": "optional context"
+  "text": "Sample text to moderate"
 }
 ```
 
-Response:
+### `POST /api/v1/moderate/pdf`
+
+Multipart form endpoint for PDF upload or public HTTPS PDF URL.
+
+Fields:
+
+- `file`: optional `.pdf` upload.
+- `document_url`: optional public HTTPS `.pdf` URL.
+
+Provide exactly one of `file` or `document_url`.
+
+### `POST /api/v1/moderate/docx`
+
+Multipart form endpoint for DOCX upload or public HTTPS DOCX URL.
+
+Fields:
+
+- `file`: optional `.docx` upload.
+- `document_url`: optional public HTTPS `.docx` URL.
+
+Provide exactly one of `file` or `document_url`.
+
+## Compatibility Endpoints
+
+- `POST /api/v1/analyze`: previous browser image endpoint.
+- `POST /api/v1/moderate`: JSON image URL endpoint.
+
+## Response Shape
 
 ```json
 {
   "overall_score": 83.2,
   "risk_level": "HIGH RISK",
   "decision": "Review Required",
+  "recommendation": "Human Review",
   "categories": {
     "weapons": 74.1,
-    "adult_content": 0.4
+    "adult_content": 0.4,
+    "pii_detection": 0
   },
   "objects": ["knife", "person"],
   "ocr_text": "...",
-  "recommendation": "Human Review"
+  "extracted_text_preview": "...",
+  "document": {
+    "file_info": {
+      "filename": "sample.pdf",
+      "file_type": "PDF",
+      "file_size_bytes": 12345
+    },
+    "page_count": 2,
+    "processing_time_seconds": 0.12,
+    "metadata": {},
+    "links": [],
+    "embedded_images": 0
+  }
 }
 ```
 

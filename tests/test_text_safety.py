@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from pipeline.text_safety import analyze_text_safety, get_text_safety_scores
+from backend.pipeline.text_safety import analyze_text_safety, get_text_safety_scores
 
 
 EXPECTED_KEYS = {

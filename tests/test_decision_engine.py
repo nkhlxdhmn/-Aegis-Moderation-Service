@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from pipeline import decision_engine as engine
+from backend.pipeline import decision_engine as engine
 
 
 def _scores(**overrides: float) -> dict[str, float]:
@@ -69,7 +69,7 @@ class DecisionEngineTests(TestCase):
 
     def test_child_safety_has_top_priority(self) -> None:
         # Scores >= CHILD_SAFETY_REVIEW_THRESHOLD (0.55) trigger UNDER_REVIEW
-        # regardless of other signals — child safety cannot be overridden by Llama.
+        # regardless of other signals â€” child safety cannot be overridden by Llama.
         self.assertDecision(
             _scores(
                 child_safety_score=engine.CHILD_SAFETY_REVIEW_THRESHOLD + 0.01,
