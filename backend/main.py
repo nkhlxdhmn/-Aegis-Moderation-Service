@@ -65,6 +65,14 @@ app.add_middleware(
 app.include_router(monitoring_routes.router)
 
 
+@app.on_event("startup")
+def _startup_model_warmup() -> None:
+    """Pre-load models when MODEL_WARMUP=true."""
+    from backend.model_warmup import warmup_models_if_enabled
+
+    warmup_models_if_enabled()
+
+
 # Security headers injected on every response.
 @app.middleware("http")
 async def _security_headers(request, call_next):

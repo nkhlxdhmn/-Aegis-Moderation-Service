@@ -1,4 +1,4 @@
-﻿"""OpenNSFW2 ViT-L adult-content detection for the Aegis moderation pipeline.
+"""OpenNSFW2 ViT-L adult-content detection for the Aegis moderation pipeline.
 
 Model: Falconsai/nsfw_image_detection (ViT-Large fine-tuned for NSFW detection).
 This is the ViT-L equivalent of the Yahoo Open NSFW2 architecture, loaded via
@@ -33,10 +33,13 @@ def _get_state() -> dict[str, Any]:
         if _state is not None:
             return _state
 
-        logger.info("Loading OpenNSFW2 ViT-L on %s", DEVICE)
         try:
             import torch
             from transformers import AutoFeatureExtractor, AutoModelForImageClassification
+
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            dtype = torch.float16 if device != "cpu" else torch.float32
+            logger.info("Loading OpenNSFW2 ViT-L on %s", device)
 
             processor = AutoFeatureExtractor.from_pretrained(
                 NSFW_MODEL_ID,
@@ -44,9 +47,9 @@ def _get_state() -> dict[str, Any]:
             )
             model = AutoModelForImageClassification.from_pretrained(
                 NSFW_MODEL_ID,
-                torch_dtype=torch.float16,
+                torch_dtype=dtype,
                 low_cpu_mem_usage=True,
-            ).to(DEVICE)
+            ).to(device)
             model.eval()
             torch.backends.cudnn.benchmark = True
 
@@ -62,13 +65,15 @@ def _get_state() -> dict[str, Any]:
                 "processor": processor,
                 "torch": torch,
                 "nsfw_idx": nsfw_idx,
+                "device": device,
+                "dtype": dtype,
             }
             _state = local  # publish only after full init (double-checked locking)
         except Exception as exc:
             logger.exception("Failed to load OpenNSFW2 ViT-L")
             raise ModelInferenceError("OpenNSFW2 ViT-L failed to load") from exc
 
-        logger.info("OpenNSFW2 ViT-L loaded on %s", DEVICE)
+        logger.info("OpenNSFW2 ViT-L loaded on %s", device)
     return _state
 
 
@@ -93,10 +98,13 @@ def get_adult_score(image_path: str) -> float:
         with Image.open(image_path) as img:
             image = img.convert("RGB")
 
+        device = state["device"]
+        dtype = state["dtype"]
+
         inputs = processor(images=image, return_tensors="pt")
-        # Cast pixel_values to float16 to match model dtype
+        # Cast pixel_values to match model dtype
         inputs = {
-            k: v.to(DEVICE, dtype=torch.float16) if v.dtype == torch.float32 else v.to(DEVICE)
+            k: v.to(device, dtype=dtype) if v.dtype == torch.float32 else v.to(device)
             for k, v in inputs.items()
         }
 

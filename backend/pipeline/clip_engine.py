@@ -125,6 +125,7 @@ class _SigLIPState:
     processor: Any
     torch: Any
     device: str
+    dtype: Any
     # Pre-encoded text feature tensors for reuse across requests
     category_inputs: dict[str, Any]  # {category: processor_output}
     heritage_inputs: Any
@@ -167,35 +168,39 @@ def _get_state() -> _SigLIPState:
         if _state is not None:
             return _state
 
-        logger.info("Loading SigLIP2 Large on %s", DEVICE)
         try:
             import torch
             from transformers import AutoModel, AutoProcessor
 
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            dtype = torch.float16 if device != "cpu" else torch.float32
+            logger.info("Loading SigLIP2 Large on %s", device)
+
             processor = AutoProcessor.from_pretrained(MODEL_ID)
             model = AutoModel.from_pretrained(
                 MODEL_ID,
-                torch_dtype=torch.float16,
+                torch_dtype=dtype,
                 low_cpu_mem_usage=True,
-            ).to(DEVICE)
+            ).to(device)
             model.eval()
             torch.backends.cudnn.benchmark = True
 
             # Pre-encode all static prompt sets (kept on CPU, moved to GPU per request)
             category_inputs = {
-                cat: _encode_texts(prompts, processor, DEVICE)
+                cat: _encode_texts(prompts, processor, device)
                 for cat, prompts in CATEGORY_PROMPTS.items()
             }
-            heritage_inputs = _encode_texts(HERITAGE_PROMPTS, processor, DEVICE)
-            safety_inputs = _encode_texts(SAFETY_PROMPTS, processor, DEVICE)
-            child_inputs = _encode_texts(CHILD_PROMPTS, processor, DEVICE)
-            promotion_inputs = _encode_texts(PROMOTION_PROMPTS, processor, DEVICE)
+            heritage_inputs = _encode_texts(HERITAGE_PROMPTS, processor, device)
+            safety_inputs = _encode_texts(SAFETY_PROMPTS, processor, device)
+            child_inputs = _encode_texts(CHILD_PROMPTS, processor, device)
+            promotion_inputs = _encode_texts(PROMOTION_PROMPTS, processor, device)
 
             local = _SigLIPState(
                 model=model,
                 processor=processor,
                 torch=torch,
-                device=DEVICE,
+                device=device,
+                dtype=dtype,
                 category_inputs=category_inputs,
                 heritage_inputs=heritage_inputs,
                 safety_inputs=safety_inputs,
@@ -207,7 +212,7 @@ def _get_state() -> _SigLIPState:
             logger.exception("Failed to load SigLIP2")
             raise ModelInferenceError("SigLIP2 failed to load") from exc
 
-        logger.info("SigLIP2 Large loaded on %s", DEVICE)
+        logger.info("SigLIP2 Large loaded on %s", device)
     return _state
 
 
@@ -220,7 +225,7 @@ def _encode_image(image_path: str, state: _SigLIPState) -> Any:
             images=img.convert("RGB"),
             return_tensors="pt",
         ).pixel_values
-    return pixel_values.to(state.device, dtype=state.torch.float16)
+    return pixel_values.to(state.device, dtype=state.dtype)
 
 
 def _sigmoid_scores(

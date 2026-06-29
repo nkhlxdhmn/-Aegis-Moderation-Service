@@ -224,9 +224,8 @@ class TestLlamaModelLoading:
     def test_state_initially_none(self) -> None:
         from backend.pipeline import vlm_engine
 
-        # Llama inference was removed; only BLIP singleton state remains.
         assert hasattr(vlm_engine, "_blip_state")
-        assert not hasattr(vlm_engine, "_llama_state")
+        assert hasattr(vlm_engine, "_llama_state")
 
     def test_reason_moderation_returns_dict_on_failure(self) -> None:
         from backend.pipeline.vlm_engine import reason_moderation

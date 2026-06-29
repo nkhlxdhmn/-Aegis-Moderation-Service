@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     environment:
       ENVIRONMENT: production
-      MODEL_WARMUP: "false"
+      MODEL_WARMUP: "true"
       NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
     volumes:

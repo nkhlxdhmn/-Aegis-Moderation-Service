@@ -44,7 +44,7 @@ COPY --chown=aegis:aegis frontend/ ./frontend/
 COPY --chown=aegis:aegis backend/ ./backend/
 COPY --chown=aegis:aegis scripts/ ./scripts/
 
-RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \
+RUN mkdir -p /home/aegis/.cache/huggingface /home/aegis/.config /app/data \
     && chown -R aegis:aegis /home/aegis /app
 
 USER aegis

@@ -85,8 +85,10 @@ def load_ml_toxicity() -> None:
 
 
 def load_llama() -> None:
-    """No-op â€” Llama removed. Kept for backward compatibility."""
+    """Load Llama reasoning model on VLM_DEVICE."""
+    from backend.pipeline import vlm_engine
 
+    vlm_engine._get_llama()
 
 def warmup_models() -> None:
     """Load all model weights in dependency order.
@@ -120,7 +122,10 @@ def warmup_models() -> None:
             logger.info("Warmup: text classifier (MuRIL hook â€” no-op if weights absent)")
             load_text_classifier()
 
-            logger.info("Warmup: skipping Llama + Qwen (removed)")
+            logger.info("Warmup: loading Llama reasoning model (%s)", _vlm_device())
+            load_llama()
+
+            logger.info("Warmup: skipping Qwen (stubbed)")
         except Exception as exc:
             _models_loaded = False
             _last_error = str(exc)
@@ -181,7 +186,7 @@ def model_status_detail() -> dict[str, str]:
         from backend.pipeline import vlm_engine as _vlm
 
         detail["blip"] = "loaded" if _vlm._blip_state is not None else "not_loaded"
-        detail["llama"] = "disabled"  # Llama removed; rule-based decision engine active
+        detail["llama"] = "loaded" if _vlm._llama_state is not None else "not_loaded"
     except Exception:
         detail["blip"] = "error"
         detail["llama"] = "error"

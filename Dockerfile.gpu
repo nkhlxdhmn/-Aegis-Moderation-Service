@@ -45,6 +45,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --default-timeout=1000 --retries=10 \
     -c constraints.txt \
     "transformers>=4.49,<5.0" "accelerate>=0.34,<1.0" \
+    "autoawq>=0.2,<0.3" \
     "ultralytics>=8.3,<9.0" "easyocr>=1.7,<2.0" "surya-ocr>=0.4,<1.0" \
     "detoxify>=0.3,<1.0" "presidio-analyzer>=2.2,<3.0"
 
@@ -58,7 +59,7 @@ COPY --chown=aegis:aegis frontend/ ./frontend/
 COPY --chown=aegis:aegis backend/ ./backend/
 COPY --chown=aegis:aegis scripts/ ./scripts/
 
-RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \
+RUN mkdir -p /home/aegis/.cache/huggingface /home/aegis/.config /app/data \
     && chown -R aegis:aegis /home/aegis /app
 
 USER aegis

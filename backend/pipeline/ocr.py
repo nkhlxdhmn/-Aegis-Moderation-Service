@@ -22,6 +22,7 @@ from backend.pipeline.easyocr_engine import _get_readers, run_easyocr
 from backend.pipeline.surya_ocr import run_surya_ocr
 
 logger = logging.getLogger(__name__)
+_easyocr_readers = _get_readers
 
 # â”€â”€ Regex helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 URL_PATTERN = re.compile(r"https?://|www\.", re.IGNORECASE)

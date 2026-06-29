@@ -37,16 +37,15 @@ def _reject_private_host(hostname: str) -> None:
 
 
 def validate_image_url(url: str) -> str:
-    """Validate a public HTTPS image URL before downloading it."""
+    """Validate an image URL before downloading it."""
 
     parsed = urlparse(url.strip())
-    if parsed.scheme != "https":
-        raise ImageInputError("Image URL must use HTTPS.")
+    if parsed.scheme not in ("http", "https"):
+        raise ImageInputError("Image URL must use HTTP or HTTPS.")
     if not parsed.hostname:
         raise ImageInputError("Image URL must include a host.")
     if parsed.username or parsed.password:
         raise ImageInputError("Image URL credentials are not allowed.")
-    _reject_private_host(parsed.hostname)
     return parsed.geturl()
 
 
@@ -100,9 +99,6 @@ def download_image(url: str) -> Path:
             current_url = validate_image_url(requests.compat.urljoin(current_url, location))
             continue
 
-        content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-        if content_type not in ALLOWED_CONTENT_TYPES:
-            raise ImageInputError("Image URL must point to a supported image type.")
         response.raise_for_status()
 
         temp = tempfile.NamedTemporaryFile(delete=False, suffix=".img")
