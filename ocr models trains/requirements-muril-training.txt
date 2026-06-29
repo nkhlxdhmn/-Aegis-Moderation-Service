@@ -1,0 +1,37 @@
+# MuRIL Abuse Classifier - Local GPU Training Requirements
+# Install with: pip install -r requirements-muril-training.txt
+
+# Core HuggingFace Transformers Stack
+transformers==4.41.0              # Core NLP library
+datasets==2.19.1                  # Dataset loading and processing
+accelerate==0.30.1                # Multi-GPU support + FP16 handling
+evaluate==0.4.1                   # Metrics computation
+
+# ML/Scientific Computing
+torch==2.1.2                       # PyTorch with CUDA support
+scikit-learn==1.4.2                # F1, precision, recall metrics
+numpy==1.24.3                      # Numerical operations
+pandas==2.0.3                      # Data manipulation
+
+# Tokenizer Dependencies
+sentencepiece==0.2.0               # MuRIL SentencePiece tokenizer
+protobuf==3.20.3                   # sentencepiece backend
+
+# Optional: Performance Optimizations
+flash-attn==2.4.0                  # Fast attention (requires CUDA toolkit)
+# Uncomment above for ~2× faster training on NVIDIA GPUs
+
+# Logging & Monitoring
+tensorboard==2.14.0                # Training visualization
+tqdm==4.66.1                       # Progress bars
+
+# Development & Debugging
+ipython==8.12.2                    # Interactive notebooks
+matplotlib==3.7.2                  # Plotting results
+seaborn==0.12.2                    # Advanced plotting
+
+# Note on CUDA:
+# This assumes CUDA 11.8/12.1 is installed on your system.
+# PyTorch will auto-detect your GPU. If issues, reinstall:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# (replace cu118 with your CUDA version: cu117, cu118, cu121, etc.)

@@ -1,0 +1,30 @@
+# ── Secrets — must never enter an image layer ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Development / training artefacts — not needed in production image ─────────
+surya-ocr-main/
+ocr models trains/
+
+# ── Python artefacts ──────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# ── Test artefacts ────────────────────────────────────────────────────────────
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Editor / OS noise ─────────────────────────────────────────────────────────
+.git/
+.gitignore
+*.md
+.DS_Store

@@ -1,0 +1,169 @@
+================================================================================
+  moderation-service — Docker Build & Run Reference
+  Platform: Linux host with NVIDIA GPU + nvidia-container-toolkit
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+A. Docker Build (standard — uses BuildKit layer cache)
+────────────────────────────────────────────────────────────────────────────────
+
+docker build -t moderation-service .
+
+────────────────────────────────────────────────────────────────────────────────
+B. Docker Build (no-cache — forces full rebuild of every layer)
+────────────────────────────────────────────────────────────────────────────────
+
+docker build --no-cache -t moderation-service .
+
+────────────────────────────────────────────────────────────────────────────────
+C. GPU Container Run (foreground, GPU 0 only — matches docker-compose)
+────────────────────────────────────────────────────────────────────────────────
+
+docker run --gpus '"device=0"' ^
+  -p 8000:8000 ^
+  --env-file .env ^
+  -e CUDA_VISIBLE_DEVICES=0 ^
+  -e MODEL_WARMUP=false ^
+  moderation-service
+
+Note (Linux shell): replace ^ with \ for line continuation.
+
+────────────────────────────────────────────────────────────────────────────────
+D. Detached GPU Run (background, named container)
+────────────────────────────────────────────────────────────────────────────────
+
+docker run -d --gpus '"device=0"' ^
+  -p 8000:8000 ^
+  --env-file .env ^
+  -e CUDA_VISIBLE_DEVICES=0 ^
+  -e MODEL_WARMUP=false ^
+  --name moderation-service ^
+  moderation-service
+
+────────────────────────────────────────────────────────────────────────────────
+E. Container Logs (follow mode)
+────────────────────────────────────────────────────────────────────────────────
+
+docker logs -f moderation-service
+
+────────────────────────────────────────────────────────────────────────────────
+F. Enter Running Container (interactive shell)
+────────────────────────────────────────────────────────────────────────────────
+
+docker exec -it moderation-service bash
+
+────────────────────────────────────────────────────────────────────────────────
+G. Stop Container
+────────────────────────────────────────────────────────────────────────────────
+
+docker stop moderation-service
+
+────────────────────────────────────────────────────────────────────────────────
+H. Remove Container
+────────────────────────────────────────────────────────────────────────────────
+
+docker rm moderation-service
+
+────────────────────────────────────────────────────────────────────────────────
+I. Remove Image
+────────────────────────────────────────────────────────────────────────────────
+
+docker rmi moderation-service
+
+────────────────────────────────────────────────────────────────────────────────
+J. Check GPU Availability (host)
+────────────────────────────────────────────────────────────────────────────────
+
+nvidia-smi
+
+────────────────────────────────────────────────────────────────────────────────
+K. Verify PyTorch CUDA (inside container or local venv)
+────────────────────────────────────────────────────────────────────────────────
+
+python -c "import torch; print(torch.cuda.is_available())"
+
+Expected output: True
+
+────────────────────────────────────────────────────────────────────────────────
+L. Verify Surya OCR Installation
+────────────────────────────────────────────────────────────────────────────────
+
+python -c "import surya; print('Surya OK')"
+
+Expected output: Surya OK
+If this fails, EasyOCR is the active OCR engine (non-fatal, pipeline continues).
+
+────────────────────────────────────────────────────────────────────────────────
+M. Verify EasyOCR Installation
+────────────────────────────────────────────────────────────────────────────────
+
+python -c "import easyocr; print('EasyOCR OK')"
+
+Expected output: EasyOCR OK
+
+────────────────────────────────────────────────────────────────────────────────
+N. Verify Classifier Status (MuRIL hook)
+────────────────────────────────────────────────────────────────────────────────
+
+python -c "from pipeline import text_classifier; print(text_classifier.is_available())"
+
+Expected output: True   — weights present in models/muril_abuse_final/
+                False  — weights absent; pipeline continues without classifier
+
+────────────────────────────────────────────────────────────────────────────────
+O. Run Test Suite
+────────────────────────────────────────────────────────────────────────────────
+
+pytest -v
+
+Or to run only the core moderation tests (faster):
+
+pytest -v tests/test_safety_flags.py tests/test_decision_engine.py ^
+           tests/test_ocr.py tests/test_model_loading.py ^
+           tests/test_accuracy_eval.py
+
+────────────────────────────────────────────────────────────────────────────────
+P. Health Check Endpoint
+────────────────────────────────────────────────────────────────────────────────
+
+curl http://localhost:8000/health
+
+Expected response (approximate):
+  {"status":"ok","model_status":"loaded",...}
+
+────────────────────────────────────────────────────────────────────────────────
+Q. Run Model Validation Script (inside container)
+────────────────────────────────────────────────────────────────────────────────
+
+python validate_models.py
+
+────────────────────────────────────────────────────────────────────────────────
+R. Production: Start via docker-compose (API + worker)
+────────────────────────────────────────────────────────────────────────────────
+
+docker compose up -d
+
+docker compose logs -f
+
+docker compose down
+
+================================================================================
+  NOTES
+================================================================================
+
+GPU requirement  : NVIDIA GPU with ≥ 8 GB VRAM (12 GB+ recommended)
+CUDA requirement : CUDA 12.4 runtime (base image: nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04)
+TORCH_CUDA_ARCH_LIST=8.9 targets Ampere/Ada (RTX 3000/4000 series).
+  → Update to "8.0" for A100, "7.5" for T4, or "8.6;8.9" for both.
+
+MuRIL classifier : Weights are NOT shipped in the image.
+  To enable: copy model/weights to models/muril_abuse_final/ before build, or
+  mount the directory as a Docker volume:
+    -v /path/to/muril_abuse_final:/app/models/muril_abuse_final
+  Without weights, classify_text() returns neutral scores — no pipeline impact.
+
+Redis            : Set REDIS_URL=redis://host:6379/0 in .env for hash caching.
+  Without Redis, the in-process LRU cache is used automatically.
+
+VLM device       : Set VLM_DEVICE=cuda:1 in .env to move BLIP to a second GPU.
+================================================================================
