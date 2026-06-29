@@ -1,19 +1,19 @@
-"""Accuracy evaluation framework for the MyItihas moderation pipeline.
+"""Accuracy evaluation framework for the Aegis moderation pipeline.
 
 Target metrics (Phase 4):
   False negatives < 1 %   (harmful content that reaches users)
   False positives < 3 %   (legitimate cultural content blocked)
 
 Test categories (1 000-image set):
-  200  adult           — explicit content; all should be REJECTED
-  200  safe            — clean photos, landscapes; all should be APPROVED
-  100  violence        — gore, assault footage; should be REJECTED
-  100  heritage        — temples, festivals, murtis; should be APPROVED
-  100  festivals       — Holi, Diwali, processions; should be APPROVED
-  100  children        — children at festivals; should be APPROVED
-  100  scams           — phishing screenshots; should be REJECTED
-  100  screenshots     — phone/app screenshots; typically APPROVED/UNDER_REVIEW
-  100  ambiguous       — borderline content; outcome varies
+  200  adult           â€” explicit content; all should be REJECTED
+  200  safe            â€” clean photos, landscapes; all should be APPROVED
+  100  violence        â€” gore, assault footage; should be REJECTED
+  100  heritage        â€” temples, festivals, murtis; should be APPROVED
+  100  festivals       â€” Holi, Diwali, processions; should be APPROVED
+  100  children        â€” children at festivals; should be APPROVED
+  100  scams           â€” phishing screenshots; should be REJECTED
+  100  screenshots     â€” phone/app screenshots; typically APPROVED/UNDER_REVIEW
+  100  ambiguous       â€” borderline content; outcome varies
 
 Usage:
     python -m pytest tests/test_accuracy_eval.py -v                    # all unit tests
@@ -36,7 +36,7 @@ from unittest.mock import patch, MagicMock
 
 logger = logging.getLogger(__name__)
 
-# ── Decision engine unit tests ─────────────────────────────────────────────────
+# â”€â”€ Decision engine unit tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 from pipeline import decision_engine as engine
 
@@ -124,21 +124,21 @@ class TestPhase4Thresholds(TestCase):
 
 
 class TestDisagreementDetection(TestCase):
-    """Tier 9 — sub-threshold risk + high heritage → UNDER_REVIEW."""
+    """Tier 9 â€” sub-threshold risk + high heritage â†’ UNDER_REVIEW."""
 
     def test_weapon_plus_heritage_routes_to_review(self) -> None:
-        # weapon_score=0.73; cultural protection → weapon_eval=0.73*0.70=0.511
-        # 0.50 < 0.511 < 0.90 AND heritage=0.90 > 0.50 → disagree fires
-        # weapon_eval=0.511 < WEAPON_THRESHOLD(0.70) → weapon tier does NOT fire first
+        # weapon_score=0.73; cultural protection â†’ weapon_eval=0.73*0.70=0.511
+        # 0.50 < 0.511 < 0.90 AND heritage=0.90 > 0.50 â†’ disagree fires
+        # weapon_eval=0.511 < WEAPON_THRESHOLD(0.70) â†’ weapon tier does NOT fire first
         scores = _s(weapon_score=0.73, heritage_score=0.90)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
         self.assertEqual(decision, "UNDER_REVIEW")
         self.assertEqual(reason_code, engine.DISAGREE_CONTENT)
 
     def test_violence_plus_heritage_routes_to_review(self) -> None:
-        # violence_score=0.73; cultural protection → violence_eval=0.73*0.70=0.511
-        # 0.50 < 0.511 < 0.90 AND heritage=0.85 > 0.50 → disagree fires
-        # violence_eval=0.511 < VIOLENCE_SELF_HARM_THRESHOLD(0.65) → violence tier does NOT fire
+        # violence_score=0.73; cultural protection â†’ violence_eval=0.73*0.70=0.511
+        # 0.50 < 0.511 < 0.90 AND heritage=0.85 > 0.50 â†’ disagree fires
+        # violence_eval=0.511 < VIOLENCE_SELF_HARM_THRESHOLD(0.65) â†’ violence tier does NOT fire
         scores = _s(violence_self_harm_score=0.73, heritage_score=0.85)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
         self.assertEqual(decision, "UNDER_REVIEW")
@@ -147,22 +147,22 @@ class TestDisagreementDetection(TestCase):
     def test_child_plus_heritage_routes_to_review(self) -> None:
         # Phase 5 child safety dominance: child_eval = raw child score (NO 0.80 reduction).
         # child=0.55 > _DISAGREE_RISK_LOW(0.50) AND heritage=0.80 > _DISAGREE_HERITAGE(0.50)
-        # → disagreement detection fires → UNDER_REVIEW DISAGREE_CONTENT
+        # â†’ disagreement detection fires â†’ UNDER_REVIEW DISAGREE_CONTENT
         scores = _s(child_safety_score=0.55, heritage_score=0.80)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
         self.assertEqual(decision, "UNDER_REVIEW")
         self.assertEqual(reason_code, engine.DISAGREE_CONTENT)
 
     def test_overwhelming_risk_suppresses_disagree(self) -> None:
-        # weapon=0.95 (overwhelming, ≥ 0.90 high-threshold) — should REJECT
-        # No heritage → no cultural protection → weapon_eval = 0.95
+        # weapon=0.95 (overwhelming, â‰¥ 0.90 high-threshold) â€” should REJECT
+        # No heritage â†’ no cultural protection â†’ weapon_eval = 0.95
         scores = _s(weapon_score=0.95)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
         self.assertEqual(decision, "REJECTED")
         self.assertEqual(reason_code, engine.WEAPON_CONTENT)
 
     def test_low_risk_no_disagree(self) -> None:
-        # weapon=0.40 (below 0.50 disagree-low threshold) → no disagree
+        # weapon=0.40 (below 0.50 disagree-low threshold) â†’ no disagree
         scores = _s(weapon_score=0.40, heritage_score=0.90)
         decision, _, _ = engine.decide_with_reason_code(scores)
         self.assertEqual(decision, "APPROVED")
@@ -177,26 +177,26 @@ class TestCulturalProtectionDecisions(TestCase):
     """Cultural protection: heritage_score > 0.60 reduces effective eval scores."""
 
     def test_high_weapon_score_reduced_by_heritage(self) -> None:
-        # weapon_score raw = 0.68; after × 0.70 = 0.476 < WEAPON_THRESHOLD(0.70)
-        # heritage_score = 0.90 > 0.60 → protection applies
+        # weapon_score raw = 0.68; after Ã— 0.70 = 0.476 < WEAPON_THRESHOLD(0.70)
+        # heritage_score = 0.90 > 0.60 â†’ protection applies
         scores = _s(weapon_score=0.68, heritage_score=0.90)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
-        # weapon_eval = 0.68 * 0.70 = 0.476 < 0.70 → weapon tier doesn't fire
-        # disagree: max_non_adult = 0.476 < 0.50 → no disagree → APPROVED
+        # weapon_eval = 0.68 * 0.70 = 0.476 < 0.70 â†’ weapon tier doesn't fire
+        # disagree: max_non_adult = 0.476 < 0.50 â†’ no disagree â†’ APPROVED
         self.assertNotEqual(reason_code, engine.WEAPON_CONTENT)
 
     def test_violence_plus_heritage_routes_via_heritage_exception(self) -> None:
         # violence_score raw = 0.75 > VIOLENCE_SELF_HARM_THRESHOLD=0.65
         # With heritage 0.90: violence_eval = 0.75 * 0.70 = 0.525 < 0.65
         # No violence tier fires; also disagree: 0.525 > 0.50 and heritage=0.90 > 0.50
-        # → DISAGREE_CONTENT UNDER_REVIEW
+        # â†’ DISAGREE_CONTENT UNDER_REVIEW
         scores = _s(violence_self_harm_score=0.75, heritage_score=0.90)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
         self.assertNotEqual(decision, "REJECTED")
         self.assertNotEqual(reason_code, engine.VIOLENCE_CONTENT)
 
     def test_no_heritage_violence_is_rejected(self) -> None:
-        # Same violence score, no heritage → REJECTED
+        # Same violence score, no heritage â†’ REJECTED
         scores = _s(violence_self_harm_score=0.75)
         decision, reason_code, _ = engine.decide_with_reason_code(scores)
         self.assertEqual(decision, "REJECTED")
@@ -215,7 +215,7 @@ class TestEnsembleFormula(TestCase):
 
     def test_ensemble_weights_sum_correctly(self) -> None:
         from pipeline.safety_flags import _compute_ensemble
-        # All risk signals = 1.0, heritage = 0.0 → max ensemble
+        # All risk signals = 1.0, heritage = 0.0 â†’ max ensemble
         # 0.25 + 0.20 + 0.15 + 0.10 + 0.10 + (1-0)*0.05 + llama*0.15
         # With llama_result REJECTED conf=1.0: llama_risk=1.0
         # = 0.25 + 0.20 + 0.15 + 0.10 + 0.10 + 0.05 + 0.15 = 1.00
@@ -229,7 +229,7 @@ class TestEnsembleFormula(TestCase):
     def test_heritage_reduces_ensemble_risk(self) -> None:
         from pipeline.safety_flags import _compute_ensemble
         # heritage=0 contributes (1-0)*0.05 = 0.05
-        # heritage=1 contributes (1-1)*0.05 = 0.00  → lower ensemble
+        # heritage=1 contributes (1-1)*0.05 = 0.00  â†’ lower ensemble
         low_heritage = _compute_ensemble(
             adult_score=0.5, child_score=0.5, violence_score=0.5,
             fraud_score=0.5, weapon_score=0.5, heritage_score=0.0,
@@ -244,8 +244,8 @@ class TestEnsembleFormula(TestCase):
 
     def test_zero_scores_give_low_ensemble(self) -> None:
         from pipeline.safety_flags import _compute_ensemble
-        # All zeros, no llama → (1-0)*0.05 + 0.5*0.15 = 0.05 + 0.075 = 0.125
-        # (llama=None → llama_risk=0.5)
+        # All zeros, no llama â†’ (1-0)*0.05 + 0.5*0.15 = 0.05 + 0.075 = 0.125
+        # (llama=None â†’ llama_risk=0.5)
         result = _compute_ensemble(
             adult_score=0.0, child_score=0.0, violence_score=0.0,
             fraud_score=0.0, weapon_score=0.0, heritage_score=0.0,
@@ -264,7 +264,7 @@ class TestMultiCaptionGeneration(TestCase):
              patch("PIL.Image.open") as mock_pil_open:
             state = MagicMock()
             state.torch.cuda.is_available.return_value = False
-            # All three decode calls return the same string → dedup to 1
+            # All three decode calls return the same string â†’ dedup to 1
             state.processor.decode.return_value = "a temple"
             state.model.generate.return_value = MagicMock()
             mock_get_blip.return_value = state
@@ -338,7 +338,7 @@ class TestReasonModerationMultiCaption(TestCase):
         self.assertEqual(result["decision"], "UNDER_REVIEW")
 
 
-# ── Full evaluation harness (runs against real images) ────────────────────────
+# â”€â”€ Full evaluation harness (runs against real images) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class EvalResult:
@@ -378,7 +378,7 @@ class EvalResult:
         return self.false_negatives / denom if denom > 0 else 0.0
 
 
-# Category → expected decision
+# Category â†’ expected decision
 CATEGORY_EXPECTED: dict[str, str] = {
     "adult":     "REJECTED",
     "safe":      "APPROVED",
@@ -387,7 +387,7 @@ CATEGORY_EXPECTED: dict[str, str] = {
     "festivals": "APPROVED",
     "children":  "APPROVED",
     "scams":     "REJECTED",
-    # screenshots and ambiguous have no hard expectation — treated as informational
+    # screenshots and ambiguous have no hard expectation â€” treated as informational
     "screenshots": None,
     "ambiguous":   None,
 }
@@ -395,7 +395,7 @@ CATEGORY_EXPECTED: dict[str, str] = {
 
 def _is_correct(prediction: str, expected: str | None) -> bool:
     if expected is None:
-        return True  # informational category — all outcomes OK
+        return True  # informational category â€” all outcomes OK
     if expected == "APPROVED":
         return prediction == "APPROVED"
     if expected == "REJECTED":
@@ -410,7 +410,7 @@ def evaluate_category(
 ) -> EvalResult:
     """Evaluate all images in images_dir/category/ against the expected outcome.
 
-    Loads the real moderation pipeline — requires GPU + models to be available.
+    Loads the real moderation pipeline â€” requires GPU + models to be available.
     caption_fn(path) optionally provides user-supplied captions.
     """
     from pipeline.safety_flags import analyze_image
@@ -501,8 +501,8 @@ def print_report(results: dict[str, EvalResult]) -> None:
     print("=" * 70)
     target_fp_ok = overall_fp_rate <= 3.0
     target_fn_ok = overall_fn_rate <= 1.0
-    print(f"FP target (≤ 3.0%): {'✓ PASS' if target_fp_ok else '✗ FAIL'}")
-    print(f"FN target (≤ 1.0%): {'✓ PASS' if target_fn_ok else '✗ FAIL'}")
+    print(f"FP target (â‰¤ 3.0%): {'âœ“ PASS' if target_fp_ok else 'âœ— FAIL'}")
+    print(f"FN target (â‰¤ 1.0%): {'âœ“ PASS' if target_fn_ok else 'âœ— FAIL'}")
     print()
 
 

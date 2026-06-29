@@ -1,7 +1,7 @@
 """Tests that all production models can be imported and their singleton state
 objects are returned without raising exceptions.
 
-These tests do NOT load real model weights — they mock the heavy library
+These tests do NOT load real model weights â€” they mock the heavy library
 imports so they run in CPU-only CI environments without VRAM.
 """
 
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _make_torch_mock(device_name: str = "cuda:0") -> MagicMock:
     torch = MagicMock()
@@ -31,7 +31,7 @@ def _mock_module(name: str, obj: object | None = None) -> MagicMock:
     return mod  # type: ignore[return-value]
 
 
-# ── OpenNSFW2 (Falconsai/nsfw_image_detection) ────────────────────────────────
+# â”€â”€ OpenNSFW2 (Falconsai/nsfw_image_detection) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestNSFWModelLoading:
     def test_get_state_returns_singleton(self) -> None:
@@ -72,7 +72,7 @@ class TestNSFWModelLoading:
         assert DEVICE == "cuda:0"
 
 
-# ── SigLIP2 (google/siglip2-large-patch16-384) ───────────────────────────────
+# â”€â”€ SigLIP2 (google/siglip2-large-patch16-384) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestSigLIP2ModelLoading:
     def test_model_id_constant(self) -> None:
@@ -97,7 +97,7 @@ class TestSigLIP2ModelLoading:
         assert hasattr(clip_engine, "_state")
 
 
-# ── YOLO11x ───────────────────────────────────────────────────────────────────
+# â”€â”€ YOLO11x â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestYOLOModelLoading:
     def test_default_model_name(self) -> None:
@@ -108,14 +108,14 @@ class TestYOLOModelLoading:
         from pipeline.object_detector import DEVICE
         assert DEVICE == "cuda:0"
 
-    def test_myitihas_classes_complete(self) -> None:
-        from pipeline.object_detector import MYITIHAS_CLASSES
-        # Heritage classes (temple, idol, etc.) removed — they don't exist in
+    def test_moderation_classes_complete(self) -> None:
+        from pipeline.object_detector import MODERATION_OBJECT_CLASSES
+        # Heritage classes (temple, idol, etc.) removed â€” they don't exist in
         # COCO-80 and would produce hallucinated detections with yolo11x.
         # Heritage context is handled by SigLIP2 prompts instead.
         required = {"person", "child", "weapon", "fire", "crowd"}
-        assert required.issubset(set(MYITIHAS_CLASSES)), (
-            f"Missing COCO-safe classes: {required - set(MYITIHAS_CLASSES)}"
+        assert required.issubset(set(MODERATION_OBJECT_CLASSES)), (
+            f"Missing COCO-safe classes: {required - set(MODERATION_OBJECT_CLASSES)}"
         )
 
     def test_confidence_threshold_is_float(self) -> None:
@@ -127,7 +127,7 @@ class TestYOLOModelLoading:
         assert hasattr(object_detector, "_state")
 
 
-# ── PaddleOCR PP-OCRv5 ────────────────────────────────────────────────────────
+# â”€â”€ PaddleOCR PP-OCRv5 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestOCRModelLoading:
     def test_get_ocr_function_exists(self) -> None:
@@ -155,7 +155,7 @@ class TestOCRModelLoading:
         assert score < 0.30, f"Safe cultural text scored too high: {score}"
 
 
-# ── BLIP-2 OPT-2.7B ──────────────────────────────────────────────────────────
+# â”€â”€ BLIP-2 OPT-2.7B â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestBLIP2ModelLoading:
     def test_model_id_constant(self) -> None:
@@ -180,7 +180,7 @@ class TestBLIP2ModelLoading:
         assert isinstance(result, str)
 
 
-# ── Llama-3.1-8B AWQ ─────────────────────────────────────────────────────────
+# â”€â”€ Llama-3.1-8B AWQ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestLlamaModelLoading:
     def test_model_id_constant(self) -> None:
@@ -216,9 +216,9 @@ class TestLlamaModelLoading:
         assert result["decision"] in ("APPROVED", "REJECTED", "UNDER_REVIEW")
 
 
-# ── model_warmup integration ──────────────────────────────────────────────────
+# â”€â”€ model_warmup integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-# ── Text classifier hook (pipeline/text_classifier.py) ───────────────────────
+# â”€â”€ Text classifier hook (pipeline/text_classifier.py) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TestTextClassifier:
     def test_public_functions_exist(self) -> None:

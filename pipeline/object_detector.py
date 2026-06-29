@@ -1,13 +1,13 @@
-"""YOLOv11x object detection for the MyItihas moderation pipeline.
+"""YOLOv11x object detection for the Aegis moderation pipeline.
 
 Model: yolo11x.pt (Ultralytics YOLO11 Extra-Large, COCO-pretrained).
 Device: cuda:0.
 
-IMPORTANT — COCO class constraint:
+IMPORTANT Ã¢â‚¬â€ COCO class constraint:
   Only COCO-80 classes (person, knife, etc.) are reliably detected by the
   default YOLO11x model. Heritage-specific labels (temple, idol, statue,
   religious_symbol, festival, diya) do NOT exist in COCO-80 and must NOT be
-  assumed — doing so produces hallucinated detections.
+  assumed Ã¢â‚¬â€ doing so produces hallucinated detections.
   Heritage context is handled by SigLIP2 semantic prompts instead.
 
 Custom model support:
@@ -21,38 +21,38 @@ Open-vocabulary option:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import os
 import threading
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ── Configuration ──────────────────────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬ Configuration Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 YOLO_MODEL_DEFAULT = "yolo11x.pt"
 DEVICE = "cuda:0"
 
-# Path to a custom-trained MyItihas YOLO model (overrides default when set)
+# Path to a custom-trained Aegis YOLO model (overrides default when set)
 CUSTOM_MODEL_PATH: str = os.getenv("YOLO_CUSTOM_MODEL_PATH", "")
 
 # Enable YOLO-World open-vocabulary mode for custom class names without retraining
 USE_OPEN_VOCAB: bool = os.getenv("YOLO_OPEN_VOCAB", "false").lower() == "true"
 
-# ── COCO-safe MyItihas classes ─────────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬ COCO-safe Aegis classes Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # Only classes that actually exist in COCO-80 or YOLO11x default weights.
 # Heritage classes (temple/idol/statue/religious_symbol/festival/diya) are
-# intentionally absent — they do not exist in COCO and produce hallucinations.
-MYITIHAS_CLASSES: list[str] = [
+# intentionally absent Ã¢â‚¬â€ they do not exist in COCO and produce hallucinations.
+MODERATION_OBJECT_CLASSES: list[str] = [
     "person",
-    "child",   # available in YOLO-World / custom fine-tunes
+    "child",  # available in YOLO-World / custom fine-tunes
     "weapon",
     "fire",
-    "crowd",   # synthetic — inferred from ≥5 concurrent person detections
+    "crowd",  # synthetic Ã¢â‚¬â€ inferred from Ã¢â€°Â¥5 concurrent person detections
 ]
 
-# ── COCO class → MyItihas semantic mapping ─────────────────────────────────────
-COCO_TO_MYITIHAS: dict[str, str] = {
+# Ã¢â€â‚¬Ã¢â€â‚¬ COCO class Ã¢â€ â€™ Aegis semantic mapping Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+COCO_TO_MODERATION_CLASS: dict[str, str] = {
     "person": "person",
     "knife": "weapon",
     "scissors": "weapon",
@@ -63,7 +63,7 @@ COCO_TO_MYITIHAS: dict[str, str] = {
     # fire / crowd are handled by custom models or synthetic inference
 }
 
-# Minimum detection confidence — lower than default to catch partially obscured objects
+# Minimum detection confidence Ã¢â‚¬â€ lower than default to catch partially obscured objects
 CONFIDENCE_THRESHOLD: float = float(os.getenv("YOLO_CONFIDENCE", "0.30"))
 # IOU threshold for NMS
 IOU_THRESHOLD: float = float(os.getenv("YOLO_IOU", "0.45"))
@@ -89,6 +89,7 @@ _state_lock = threading.Lock()
 def _select_device() -> str:
     try:
         import torch
+
         return DEVICE if torch.cuda.is_available() else "cpu"
     except Exception:
         return "cpu"
@@ -99,7 +100,7 @@ def _load_model(device: str) -> tuple[Any, bool, bool]:
     from ultralytics import YOLO
 
     if CUSTOM_MODEL_PATH and os.path.isfile(CUSTOM_MODEL_PATH):
-        logger.info("Loading custom MyItihas YOLO model: %s", CUSTOM_MODEL_PATH)
+        logger.info("Loading custom Aegis YOLO model: %s", CUSTOM_MODEL_PATH)
         model = YOLO(CUSTOM_MODEL_PATH)
         model.to(device)
         return model, True, False
@@ -107,7 +108,7 @@ def _load_model(device: str) -> tuple[Any, bool, bool]:
     if USE_OPEN_VOCAB:
         logger.info("Loading YOLO-World open-vocabulary model on %s", device)
         model = YOLO("yolov8x-worldv2.pt")
-        model.set_classes(MYITIHAS_CLASSES)
+        model.set_classes(MODERATION_OBJECT_CLASSES)
         model.to(device)
         return model, False, True
 
@@ -128,6 +129,7 @@ def _get_state() -> _YOLOState:
 
         try:
             import torch
+
             device = _select_device()
             model, is_custom, is_open_vocab = _load_model(device)
             _state = _YOLOState(
@@ -143,23 +145,25 @@ def _get_state() -> _YOLOState:
 
         logger.info(
             "YOLO model loaded on %s (custom=%s, open_vocab=%s)",
-            _state.device, _state.is_custom, _state.is_open_vocab,
+            _state.device,
+            _state.is_custom,
+            _state.is_open_vocab,
         )
     return _state
 
 
 def _remap_class(class_name: str) -> str:
-    """Map a COCO class name to a MyItihas semantic class where applicable."""
-    return COCO_TO_MYITIHAS.get(class_name.lower(), class_name.lower())
+    """Map a COCO class name to a Aegis semantic class where applicable."""
+    return COCO_TO_MODERATION_CLASS.get(class_name.lower(), class_name.lower())
 
 
 def _infer_crowd(detections: list[dict]) -> list[dict]:
     """Add a synthetic 'crowd' detection when many persons appear in one frame."""
     person_count = sum(1 for d in detections if d.get("class") == "person")
     if person_count >= 5:
-        avg_conf = sum(
-            d["confidence"] for d in detections if d.get("class") == "person"
-        ) / person_count
+        avg_conf = (
+            sum(d["confidence"] for d in detections if d.get("class") == "person") / person_count
+        )
         detections.append({"class": "crowd", "confidence": round(avg_conf, 4)})
     return detections
 
@@ -182,7 +186,7 @@ def _parse_results(results: Any, state: _YOLOState) -> list[dict]:
         if names is None:
             names = getattr(getattr(result, "model", None), "names", None)
 
-        for cls_t, conf_t in zip(cls_vals, conf_vals):
+        for cls_t, conf_t in zip(cls_vals, conf_vals, strict=False):
             try:
                 cls_id = int(cls_t.item() if hasattr(cls_t, "item") else float(cls_t))
                 conf = float(conf_t.item() if hasattr(conf_t, "item") else float(conf_t))
@@ -200,7 +204,9 @@ def _parse_results(results: Any, state: _YOLOState) -> list[dict]:
                 raw_name = str(cls_id)
 
             # Use custom class names directly if from a custom or open-vocab model
-            mapped = raw_name if (state.is_custom or state.is_open_vocab) else _remap_class(raw_name)
+            mapped = (
+                raw_name if (state.is_custom or state.is_open_vocab) else _remap_class(raw_name)
+            )
             detections.append({"class": mapped, "confidence": round(conf, 4)})
 
     return _infer_crowd(detections)

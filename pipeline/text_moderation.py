@@ -1,21 +1,21 @@
-"""Text post moderation pipeline for MyItihas.
+﻿"""Text post moderation pipeline for Aegis.
 
 Models (all lazy-loaded, each falls back gracefully if unavailable):
-  Detoxify multilingual — ML toxicity across 7 dimensions (obscene, threat,
+  Detoxify multilingual â€” ML toxicity across 7 dimensions (obscene, threat,
       insult, identity_attack, sexual_explicit, toxicity, severe_toxicity).
-  FastText lid.176.bin — language identification.
-  Llama-3.1-8B-AWQ — structured JSON reasoning, shared singleton with the
+  FastText lid.176.bin â€” language identification.
+  Llama-3.1-8B-AWQ â€” structured JSON reasoning, shared singleton with the
       image pipeline via vlm_engine.reason_text_moderation().
 
 Produces a scores dict fully compatible with decision_engine.decide_with_reason_code().
 
 Text-specific score keys (new keys used by Tier 0 rules in decision_engine.py):
-  marketing_keyword_count   — phrase count (≥ 2 → Tier-0C reject)
-  course_promotion_score    — 0-1 course / paid-class marketing
-  political_score           — 0-1 political content probability
-  political_campaign_score  — 0-1 active campaign / vote solicitation
-  animal_cruelty_text_score — 0-1 animal abuse language
-  human_killing_text_score  — 0-1 murder / execution language
+  marketing_keyword_count   â€” phrase count (â‰¥ 2 â†’ Tier-0C reject)
+  course_promotion_score    â€” 0-1 course / paid-class marketing
+  political_score           â€” 0-1 political content probability
+  political_campaign_score  â€” 0-1 active campaign / vote solicitation
+  animal_cruelty_text_score â€” 0-1 animal abuse language
+  human_killing_text_score  â€” 0-1 murder / execution language
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 WHITESPACE = re.compile(r"\s+")
 
-# ── Model paths ────────────────────────────────────────────────────────────────
+# â”€â”€ Model paths â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Path is relative to this file's directory so it resolves correctly regardless
 # of the process working directory (e.g. Docker WORKDIR vs local dev).
 import os as _os
@@ -37,17 +37,17 @@ FASTTEXT_MODEL_PATH = _os.path.join(
 )
 DETOXIFY_MODEL = "multilingual"              # falls back to "unbiased" on import error
 
-# ── Frame-level config (reused for text ensemble) ─────────────────────────────
+# â”€â”€ Frame-level config (reused for text ensemble) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _MAX_TEXT_LEN = 2000  # characters fed to Detoxify / Llama
 
-# ── Marketing / promotion keyword lists ───────────────────────────────────────
+# â”€â”€ Marketing / promotion keyword lists â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _MARKETING_PHRASES = (
     "buy now", "limited offer", "discount", "sale today", "join now",
     "click link", "click here", "register now", "earn money", "free course",
     "paid course", "subscribe", "promo code", "investment opportunity",
     "telegram link", "whatsapp group", "dm for details", "100% guaranteed",
-    "earn ₹", "crypto signal", "make money fast", "work from home",
+    "earn â‚¹", "crypto signal", "make money fast", "work from home",
     "passive income", "refer and earn", "affiliate link", "use my code",
     "double your money", "risk free", "no risk", "instant profit",
 )
@@ -87,7 +87,7 @@ _HUMAN_KILLING_PHRASES = (
     "shoot to kill", "kill him", "kill her", "death threat",
 )
 
-# ── Heritage keyword detection for text posts ─────────────────────────────────
+# â”€â”€ Heritage keyword detection for text posts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _HERITAGE_KEYWORDS = (
     "ramayana", "mahabharata", "bhagavad gita", "gita", "vedas", "vedic",
@@ -103,7 +103,7 @@ _HERITAGE_KEYWORDS = (
 )
 
 
-# ── Dataclass ──────────────────────────────────────────────────────────────────
+# â”€â”€ Dataclass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass(frozen=True)
 class TextModerationResult:
@@ -115,7 +115,7 @@ class TextModerationResult:
     error_reason: str | None = None
 
 
-# ── Lazy model singletons ──────────────────────────────────────────────────────
+# â”€â”€ Lazy model singletons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _detoxify_model = None
 _fasttext_model = None
@@ -135,7 +135,7 @@ def _get_detoxify():
             _detoxify_model = Detoxify("unbiased")
             logger.info("Detoxify 'unbiased' model loaded")
     except ImportError:
-        logger.warning("detoxify not installed — toxicity scoring disabled")
+        logger.warning("detoxify not installed â€” toxicity scoring disabled")
         _detoxify_model = None
     return _detoxify_model
 
@@ -152,15 +152,15 @@ def _get_fasttext():
             logger.info("FastText language model loaded from %s", FASTTEXT_MODEL_PATH)
         else:
             logger.warning(
-                "FastText model not found at %s — language detection disabled",
+                "FastText model not found at %s â€” language detection disabled",
                 FASTTEXT_MODEL_PATH,
             )
     except ImportError:
-        logger.warning("fasttext not installed — language detection disabled")
+        logger.warning("fasttext not installed â€” language detection disabled")
     return _fasttext_model
 
 
-# ── Internal helpers ───────────────────────────────────────────────────────────
+# â”€â”€ Internal helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _normalize(text: str) -> str:
     return WHITESPACE.sub(" ", (text or "")).strip().lower()
@@ -194,7 +194,7 @@ def _llama_to_risk(llama_result: dict | None) -> tuple[float, float]:
     return 0.5, 0.0
 
 
-# ── Per-model scoring functions ────────────────────────────────────────────────
+# â”€â”€ Per-model scoring functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _detoxify_scores(text: str) -> dict[str, float]:
     """Run Detoxify and map its outputs to decision_engine score keys."""
@@ -295,7 +295,7 @@ def _heritage_text_score(text: str) -> float:
 
 def _default_text_scores() -> dict[str, float]:
     return {
-        # Standard image-pipeline keys (set to 0 for text — won't trigger image rules)
+        # Standard image-pipeline keys (set to 0 for text â€” won't trigger image rules)
         "adult_score": 0.0,
         "heritage_score": 0.0,
         "content_quality_score": 0.0,
@@ -337,7 +337,7 @@ def _default_text_scores() -> dict[str, float]:
     }
 
 
-# ── Score fusion ───────────────────────────────────────────────────────────────
+# â”€â”€ Score fusion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _fuse_scores(
     detoxify: dict[str, float],
@@ -351,13 +351,13 @@ def _fuse_scores(
 
     scores = _default_text_scores()
 
-    # ── Adult content ──
+    # â”€â”€ Adult content â”€â”€
     scores["adult_score"] = _clamp(max(
         detoxify.get("_detoxify_adult", 0.0),
     ))
     scores["nsfw_score"] = scores["adult_score"]
 
-    # ── Violence / self-harm ──
+    # â”€â”€ Violence / self-harm â”€â”€
     scores["violence_self_harm_score"] = _clamp(max(
         detoxify.get("_detoxify_violence", 0.0),
         text_rules.get("harassment_score", 0.0) * 0.60,
@@ -365,43 +365,43 @@ def _fuse_scores(
     scores["self_harm_text_score"] = text_rules.get("self_harm_text_score", 0.0)
     scores["self_harm_score"] = scores["self_harm_text_score"]
 
-    # ── Hate speech ──
+    # â”€â”€ Hate speech â”€â”€
     scores["hate_speech_score"] = _clamp(max(
         detoxify.get("_detoxify_hate_speech", 0.0),
         text_rules.get("hate_speech_score", 0.0),
     ))
 
-    # ── Harassment ──
+    # â”€â”€ Harassment â”€â”€
     scores["harassment_score"] = _clamp(max(
         detoxify.get("_detoxify_harassment", 0.0),
         text_rules.get("harassment_score", 0.0),
     ))
 
-    # ── Terrorism / fraud / misinformation ──
+    # â”€â”€ Terrorism / fraud / misinformation â”€â”€
     scores["terrorism_score"] = text_rules.get("terrorism_score", 0.0)
     scores["fraud_score"] = text_rules.get("fraud_score", 0.0)
     scores["misinformation_score"] = text_rules.get("misinformation_score", 0.0)
 
-    # ── Promotion ──
+    # â”€â”€ Promotion â”€â”€
     scores["promotion_score"] = promotion.get("promotion_score", 0.0)
     scores["marketing_keyword_count"] = promotion.get("marketing_keyword_count", 0.0)
     scores["course_promotion_score"] = promotion.get("course_promotion_score", 0.0)
     scores["political_score"] = promotion.get("political_score", 0.0)
     scores["political_campaign_score"] = promotion.get("political_campaign_score", 0.0)
 
-    # ── Violence text signals ──
+    # â”€â”€ Violence text signals â”€â”€
     scores["animal_cruelty_text_score"] = violence_text.get("animal_cruelty_text_score", 0.0)
     scores["human_killing_text_score"] = violence_text.get("human_killing_text_score", 0.0)
 
-    # ── Heritage (boosts ambiguous content toward UNDER_REVIEW) ──
+    # â”€â”€ Heritage (boosts ambiguous content toward UNDER_REVIEW) â”€â”€
     scores["heritage_score"] = heritage
 
-    # ── Llama ──
+    # â”€â”€ Llama â”€â”€
     llama_risk, llama_approves = _llama_to_risk(llama_result)
     scores["llama_risk_score"] = llama_risk
     scores["llama_approves"] = llama_approves
 
-    # ── Ensemble risk (max-fusion of primary signals) ──
+    # â”€â”€ Ensemble risk (max-fusion of primary signals) â”€â”€
     primary_risks = [
         scores["adult_score"],
         scores["violence_self_harm_score"],
@@ -419,7 +419,7 @@ def _fuse_scores(
     return scores
 
 
-# ── Public API ─────────────────────────────────────────────────────────────────
+# â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def moderate_text(
     text: str,
@@ -450,31 +450,31 @@ def moderate_text(
     normalized = _normalize(text)
 
     try:
-        # Stage 1 — Language detection
+        # Stage 1 â€” Language detection
         language = _detect_language(text)
         logger.info("Detected language: %s", language)
 
-        # Stage 2 — Rule-based text safety
+        # Stage 2 â€” Rule-based text safety
         text_rules = _text_rule_scores(text)
 
-        # Stage 3 — Detoxify ML scores
+        # Stage 3 â€” Detoxify ML scores
         detoxify = _detoxify_scores(normalized)
 
-        # Stage 4 — Promotion / keyword detection
+        # Stage 4 â€” Promotion / keyword detection
         promotion = _promotion_scores(normalized)
 
-        # Stage 5 — Violence / cruelty text detection
+        # Stage 5 â€” Violence / cruelty text detection
         violence_text = _violence_text_scores(normalized)
 
-        # Stage 6 — Heritage keyword scoring
+        # Stage 6 â€” Heritage keyword scoring
         heritage = _heritage_text_score(normalized)
 
-        # Stage 7 — Preliminary score fusion (for Llama context)
+        # Stage 7 â€” Preliminary score fusion (for Llama context)
         pre_scores = _fuse_scores(
             detoxify, text_rules, promotion, violence_text, heritage, None
         )
 
-        # Stage 8 — Llama reasoning
+        # Stage 8 â€” Llama reasoning
         from pipeline.vlm_engine import reason_text_moderation
         llama_result = reason_text_moderation(
             text,
@@ -489,7 +489,7 @@ def moderate_text(
             language=language,
         )
 
-        # Stage 9 — Final score fusion with Llama result
+        # Stage 9 â€” Final score fusion with Llama result
         final_scores = _fuse_scores(
             detoxify, text_rules, promotion, violence_text, heritage, llama_result
         )
@@ -526,3 +526,4 @@ def moderate_text(
             pipeline_error=True,
             error_reason=str(exc),
         )
+

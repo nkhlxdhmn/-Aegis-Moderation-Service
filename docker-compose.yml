@@ -1,75 +1,29 @@
-services:
-  moderation-api:
-    build: .
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
-    env_file:
-      - .env
-    environment:
-      ENVIRONMENT: "production"
-      # Disabled: API shares the GPU with the worker. Models load lazily on
-      # first /moderate request to avoid startup VRAM contention.
-      MODEL_WARMUP: "false"
-
-      ALLOW_INSECURE_ADMIN_AUTH: "false"
-      # Restrict CUDA to GPU 0 at the application level.  Combined with
-      # device_ids below this enforces isolation at both Docker and CUDA layers.
-      CUDA_VISIBLE_DEVICES: "0"
-      NVIDIA_VISIBLE_DEVICES: "0"
+﻿services:
+  aegis-moderation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aegis-moderation:1.0.0
     ports:
       - "8000:8000"
     restart: unless-stopped
-    volumes:
-      - hf_cache:/root/.cache/huggingface
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['0']
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      # GPU model warmup on cold start takes 60-120s; allow full 2 minutes.
-      start_period: 120s
-
-  moderation-worker:
-    build: .
-    command: python worker.py
-    env_file:
-      - .env
     environment:
-      ENVIRONMENT: "production"
-      MODEL_WARMUP: "true"
-
-      ALLOW_INSECURE_ADMIN_AUTH: "false"
-      CUDA_VISIBLE_DEVICES: "0"
-      NVIDIA_VISIBLE_DEVICES: "0"
-    restart: unless-stopped
+      ENVIRONMENT: production
+      MODEL_WARMUP: "false"
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
     volumes:
-      - hf_cache:/root/.cache/huggingface
-    # Workers talk directly to Supabase — they do not need the API to be
-    # healthy.  Coupling them via depends_on means an API OOM takes down
-    # workers as well, which is the opposite of the desired failure mode.
+      - hf_cache:/home/aegis/.cache/huggingface
+      - app_data:/app/data
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['0']
+              count: all
               capabilities: [gpu]
     healthcheck:
-      # Write a sentinel file each heartbeat cycle and check its age.
-      # This is simpler than /proc scanning and works on all Linux kernels.
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import os, sys, time; p='/tmp/worker_alive'; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p)<120 else 1)"
-        ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -77,3 +31,4 @@ services:
 
 volumes:
   hf_cache:
+  app_data:

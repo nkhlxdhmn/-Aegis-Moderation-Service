@@ -1,4 +1,4 @@
-"""OpenNSFW2 ViT-L adult-content detection for the MyItihas moderation pipeline.
+﻿"""OpenNSFW2 ViT-L adult-content detection for the Aegis moderation pipeline.
 
 Model: Falconsai/nsfw_image_detection (ViT-Large fine-tuned for NSFW detection).
 This is the ViT-L equivalent of the Yahoo Open NSFW2 architecture, loaded via
@@ -50,7 +50,7 @@ def _get_state() -> dict[str, Any]:
             model.eval()
             torch.backends.cudnn.benchmark = True
 
-            # Build label → index map once
+            # Build label â†’ index map once
             id2label: dict[int, str] = getattr(model.config, "id2label", {0: "normal", 1: "nsfw"})
             nsfw_idx = next(
                 (k for k, v in id2label.items() if "nsfw" in str(v).lower()),
@@ -72,7 +72,7 @@ def get_adult_score(image_path: str) -> float:
 
     Score interpretation:
         < 0.30  safe content
-        0.30–0.50  review threshold (mildly suggestive)
+        0.30â€“0.50  review threshold (mildly suggestive)
         > 0.50  rejected as adult content
     """
     logger.info("OpenNSFW2 inference started")
@@ -110,3 +110,4 @@ def get_adult_score(image_path: str) -> float:
 
     logger.info("OpenNSFW2 inference completed: score=%.3f", nsfw_score)
     return max(0.0, min(1.0, nsfw_score))
+

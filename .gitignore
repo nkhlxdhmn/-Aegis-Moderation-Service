@@ -1,0 +1,70 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# Logs, temp files, notebooks, reports
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+.ipynb_checkpoints/
+*.ipynb
+reports/
+run.txt
+
+# Local model/data artifacts
+data/
+models/**/*.bin
+models/**/*.pt
+models/**/*.pth
+models/**/*.onnx
+models/**/*.safetensors
+models/**/*.faiss
+*.ckpt
+*.weights
+
+# Training artifacts
+training/datasets/
+training/weights/
+training/outputs/
+training/checkpoints/
+training/runs/
+training/logs/
+
+# Download caches
+.cache/
+hf_cache/
+huggingface/
+surya-ocr-main/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

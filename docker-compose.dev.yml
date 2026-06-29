@@ -1,0 +1,23 @@
+﻿services:
+  aegis-moderation-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: aegis-moderation-dev:1.0.0
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      MODEL_WARMUP: "false"
+    volumes:
+      - .:/app
+      - hf_cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  hf_cache:

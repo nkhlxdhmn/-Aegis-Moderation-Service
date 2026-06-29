@@ -1,6 +1,6 @@
-"""Decision engine for the MyItihas moderation pipeline.
+﻿"""Decision engine for the Aegis moderation pipeline.
 
-Pure rule-based design — no LLM dependency:
+Pure rule-based design â€” no LLM dependency:
   - Higher thresholds to reduce false positives for cultural/heritage content.
   - Cultural protection: heritage content gets effective score reductions
     inside the tier checks (raw scores preserved for audit trail).
@@ -19,7 +19,7 @@ Tier 0 hard-rejects:
 
 import logging
 
-# ── Per-category thresholds (Phase 3 — false-positive reduction) ───────────────
+# â”€â”€ Per-category thresholds (Phase 3 â€” false-positive reduction) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ADULT_REJECT_THRESHOLD       = 0.45   # lowered: no LLM safety net
 HERITAGE_REVIEW_THRESHOLD    = 0.50
 CONTENT_QUALITY_THRESHOLD    = 0.35
@@ -36,9 +36,9 @@ PRIVACY_THRESHOLD            = 0.55
 FRAUD_THRESHOLD              = 0.55
 HATE_SPEECH_THRESHOLD        = 0.55
 HARASSMENT_THRESHOLD         = 0.55
-PROMOTION_THRESHOLD          = 0.20   # any single promo phrase → UNDER_REVIEW
+PROMOTION_THRESHOLD          = 0.20   # any single promo phrase â†’ UNDER_REVIEW
 
-# ── Tier 0 thresholds — hard rejects ─────────────────────────────────────────
+# â”€â”€ Tier 0 thresholds â€” hard rejects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 # NSFW / pornographic content
 EXPLICIT_NSFW_THRESHOLD       = 0.60   # lowered: flag nudity earlier
@@ -59,20 +59,20 @@ VIOLENT_GORE_BLD_THRESHOLD    = 0.35   # lowered
 SELF_HARM_HARD_THRESHOLD      = 0.45   # lowered: suicide/self-harm critical
 
 # Promotion / spam hard reject
-PROMOTION_HARD_THRESHOLD      = 0.30   # 1+ promo phrase → immediate REJECT
-SOCIAL_MEDIA_HARD_THRESHOLD   = 0.30   # 1 social phrase (follow me, f4f…) → REJECT
-MARKETING_KEYWORD_MIN_COUNT   = 1.0    # any single marketing keyword → REJECT
-COURSE_PROMOTION_THRESHOLD    = 0.10   # any course promotion phrase → REJECT
-PHONE_NUMBER_REJECT_THRESHOLD = 0.35   # phone number in image → REJECT
-SOCIAL_HANDLE_REJECT_THRESHOLD = 0.25  # @handle in image → REJECT
-URL_REJECT_THRESHOLD          = 0.35   # URL in image → REJECT
-QR_CODE_REJECT_THRESHOLD      = 0.50   # QR code detected → REJECT
+PROMOTION_HARD_THRESHOLD      = 0.30   # 1+ promo phrase â†’ immediate REJECT
+SOCIAL_MEDIA_HARD_THRESHOLD   = 0.30   # 1 social phrase (follow me, f4fâ€¦) â†’ REJECT
+MARKETING_KEYWORD_MIN_COUNT   = 1.0    # any single marketing keyword â†’ REJECT
+COURSE_PROMOTION_THRESHOLD    = 0.10   # any course promotion phrase â†’ REJECT
+PHONE_NUMBER_REJECT_THRESHOLD = 0.35   # phone number in image â†’ REJECT
+SOCIAL_HANDLE_REJECT_THRESHOLD = 0.25  # @handle in image â†’ REJECT
+URL_REJECT_THRESHOLD          = 0.35   # URL in image â†’ REJECT
+QR_CODE_REJECT_THRESHOLD      = 0.50   # QR code detected â†’ REJECT
 
 # Tier 0-D: Hate speech / political rejection thresholds
-ML_HATE_REJECT_THRESHOLD      = 0.70   # ML hate score → immediate REJECT
-ML_TOXICITY_REJECT_THRESHOLD  = 0.75   # ML toxicity → immediate REJECT
-ML_HATE_REVIEW_THRESHOLD      = 0.50   # ML hate score → UNDER_REVIEW
-HATE_SPEECH_RULE_THRESHOLD    = 0.55   # rule-based hate → REJECT
+ML_HATE_REJECT_THRESHOLD      = 0.70   # ML hate score â†’ immediate REJECT
+ML_TOXICITY_REJECT_THRESHOLD  = 0.75   # ML toxicity â†’ immediate REJECT
+ML_HATE_REVIEW_THRESHOLD      = 0.50   # ML hate score â†’ UNDER_REVIEW
+HATE_SPEECH_RULE_THRESHOLD    = 0.55   # rule-based hate â†’ REJECT
 POLITICAL_SCORE_THRESHOLD     = 0.55   # lowered: catches more political content
 POLITICAL_CAMPAIGN_THRESHOLD  = 0.45   # lowered
 
@@ -80,22 +80,22 @@ POLITICAL_CAMPAIGN_THRESHOLD  = 0.45   # lowered
 VIDEO_UNSAFE_RATIO_THRESHOLD  = 0.15   # lowered
 VIDEO_CONSECUTIVE_THRESHOLD   = 3.0    # lowered
 
-# Heritage exception: content with heritage_score ≥ this triggers UNDER_REVIEW
+# Heritage exception: content with heritage_score â‰¥ this triggers UNDER_REVIEW
 # instead of auto-REJECT for violence/weapon/self-harm/adult categories.
 HERITAGE_EXCEPTION_THRESHOLD = 0.55   # raised: require stronger heritage signal
 
-# Ensemble risk: above this → UNDER_REVIEW
+# Ensemble risk: above this â†’ UNDER_REVIEW
 ENSEMBLE_RISK_THRESHOLD      = 0.45   # lowered significantly: no LLM catch-all
 
 # Heritage score above which weapon/violence/child checks are softened
 CULTURAL_PROTECTION_THRESHOLD = 0.65  # raised: require stronger heritage signal
 
-# Heritage score + elevated risk (but not overwhelming) → disagree → review
+# Heritage score + elevated risk (but not overwhelming) â†’ disagree â†’ review
 _DISAGREE_RISK_LOW  = 0.50   # risk must be > this to flag disagreement
-_DISAGREE_RISK_HIGH = 0.90   # risk must be < this (overwhelming → suppress disagree)
+_DISAGREE_RISK_HIGH = 0.90   # risk must be < this (overwhelming â†’ suppress disagree)
 _DISAGREE_HERITAGE  = 0.50   # heritage must be > this to flag disagreement
 
-# ── Reason codes ───────────────────────────────────────────────────────────────
+# â”€â”€ Reason codes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CHILD_SAFETY_ALERT          = "CHILD_SAFETY_ALERT"
 TERRORISM_CONTENT           = "TERRORISM_CONTENT"
 DRUG_TRAFFICKING_CONTENT    = "DRUG_TRAFFICKING_CONTENT"
@@ -118,7 +118,7 @@ HIGH_UNCERTAINTY            = "HIGH_UNCERTAINTY"
 LLM_REJECTION               = "LLM_REJECTION"
 APPROVED                    = "APPROVED"
 
-# ── Tier 0 reason codes ────────────────────────────────────────────────────────
+# â”€â”€ Tier 0 reason codes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 EXPLICIT_PORNOGRAPHIC_CONTENT = "EXPLICIT_PORNOGRAPHIC_CONTENT"
 HIGH_RISK_EXPLICIT_CONTENT    = "HIGH_RISK_EXPLICIT_CONTENT"
 HIGH_CONFIDENCE_VIOLENCE      = "HIGH_CONFIDENCE_VIOLENCE"
@@ -141,7 +141,7 @@ SOCIAL_HANDLE_SPAM            = "SOCIAL_HANDLE_SPAM"
 URL_IN_IMAGE                  = "URL_IN_IMAGE"
 VIDEO_UNSAFE_FRAMES           = "VIDEO_UNSAFE_FRAMES"
 
-# Uncertainty threshold — above this score routes to human review
+# Uncertainty threshold â€” above this score routes to human review
 UNCERTAINTY_REVIEW_THRESHOLD = 0.35
 
 logger = logging.getLogger(__name__)
@@ -200,7 +200,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     ensemble_risk_score     = _score(scores, "ensemble_risk_score")
     uncertainty_score       = _score(scores, "uncertainty_score")
 
-    # ── Tier 0 supplemental inputs (populated by upstream pipeline) ────────────
+    # â”€â”€ Tier 0 supplemental inputs (populated by upstream pipeline) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     nsfw_score               = _score(scores, "nsfw_score")
     visual_explicit          = _score(scores, "visual_explicit_indicator")
     animal_cruelty_text      = _score(scores, "animal_cruelty_text_score")
@@ -219,8 +219,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     video_unsafe_ratio       = _score(scores, "video_unsafe_frame_ratio")
     video_consecutive        = _score(scores, "video_consecutive_unsafe_frames")
 
-    # ── Tier 0-A: Hard NSFW / Pornographic reject ─────────────────────────────
-    # Fires before Llama approval — explicit pornography has no approval path
+    # â”€â”€ Tier 0-A: Hard NSFW / Pornographic reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Fires before Llama approval â€” explicit pornography has no approval path
     # and no heritage exception.
     adult_effective = max(adult_score, nsfw_score)
     if visual_explicit >= 0.5:
@@ -255,8 +255,8 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Rejected: adult content combined with high-risk signal (violence, weapon, or child safety).",
         )
 
-    # ── Tier 0-B: Hard Violence / Dangerous content reject ────────────────────
-    # Fires before Llama approval — extreme violence bypasses heritage exception.
+    # â”€â”€ Tier 0-B: Hard Violence / Dangerous content reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Fires before Llama approval â€” extreme violence bypasses heritage exception.
     violence_effective = max(
         violence_self_harm_score, blood_score, weapon_score, self_harm_score
     )
@@ -302,7 +302,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
 
     # Combined-signal checks use lower thresholds and therefore respect the heritage
     # exception: mythological battles, archery, and ritual scenes routinely cross
-    # 0.50–0.60 on these dimensions while being culturally valid content.  The
+    # 0.50â€“0.60 on these dimensions while being culturally valid content.  The
     # absolute-threshold blocks above (0.85 / 0.80 / 0.85) are hard stops regardless.
     if (
         weapon_score >= WEAPON_VIOLENCE_WPN_THRESHOLD
@@ -382,7 +382,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Rejected: self-harm content detected with high confidence.",
         )
 
-    # ── Tier 0-C: Promotion / Spam hard reject ────────────────────────────────
+    # â”€â”€ Tier 0-C: Promotion / Spam hard reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if promotion_score >= PROMOTION_HARD_THRESHOLD:
         logger.warning(
             "Tier-0C promotion spam reject | promotion=%.3f decision=REJECTED reason=%s",
@@ -446,7 +446,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         return (
             "REJECTED",
             PHONE_NUMBER_SPAM,
-            "Rejected: phone number detected — promotional or spam content.",
+            "Rejected: phone number detected â€” promotional or spam content.",
         )
 
     if social_handle_score_ >= SOCIAL_HANDLE_REJECT_THRESHOLD:
@@ -454,7 +454,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         return (
             "REJECTED",
             SOCIAL_HANDLE_SPAM,
-            "Rejected: social media handle (@username) detected — promotional content.",
+            "Rejected: social media handle (@username) detected â€” promotional content.",
         )
 
     if url_score_ >= URL_REJECT_THRESHOLD:
@@ -470,10 +470,10 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         return (
             "REJECTED",
             QR_CODE_PROMOTION,
-            "Rejected: QR code detected — likely links to external promotion or payment.",
+            "Rejected: QR code detected â€” likely links to external promotion or payment.",
         )
 
-    # ── Tier 0-D: Hate speech / ML toxicity ───────────────────────────────────
+    # â”€â”€ Tier 0-D: Hate speech / ML toxicity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if ml_hate_score_ >= ML_HATE_REJECT_THRESHOLD:
         logger.warning(
             "Tier-0D ML hate reject | ml_hate=%.3f decision=REJECTED",
@@ -516,11 +516,11 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         return (
             "REJECTED",
             HATE_SPEECH_REJECTION,
-            "Rejected: rule-based hate speech detection — religious, racial, or ethnic hatred.",
+            "Rejected: rule-based hate speech detection â€” religious, racial, or ethnic hatred.",
         )
 
-    # ── Tier 0-E: Video temporal safety rules ─────────────────────────────────
-    # Fires before Llama approval — dense or sustained unsafe video content
+    # â”€â”€ Tier 0-E: Video temporal safety rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Fires before Llama approval â€” dense or sustained unsafe video content
     # cannot be approved regardless of individual frame scores.
     if video_unsafe_ratio >= VIDEO_UNSAFE_RATIO_THRESHOLD:
         logger.warning(
@@ -548,7 +548,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
 
     is_heritage = heritage_score >= HERITAGE_EXCEPTION_THRESHOLD
 
-    # ── Cultural protection: heritage content gets effective score reductions ──
+    # â”€â”€ Cultural protection: heritage content gets effective score reductions â”€â”€
     # Raw scores are preserved in the result for audit; only the _eval variables
     # are used in threshold comparisons inside this function.
     # Phase 5: child_safety_eval always equals raw child_safety_score (child dominance).
@@ -568,7 +568,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     )
     effective_ensemble_risk = min(1.0, ensemble_risk_score + child_penalty)
 
-    # ── Tier 1: Child safety (dual threshold) ────────────────────────────────
+    # â”€â”€ Tier 1: Child safety (dual threshold) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if child_safety_eval >= CHILD_SAFETY_REVIEW_THRESHOLD:
         return (
             "UNDER_REVIEW",
@@ -576,7 +576,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Child safety risk requires manual review.",
         )
 
-    # ── Tier 3: Trafficking / terrorism ──────────────────────────────────────
+    # â”€â”€ Tier 3: Trafficking / terrorism â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if drug_trafficking_score > DRUG_TRAFFICKING_THRESHOLD:
         return (
             "REJECTED",
@@ -596,7 +596,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Rejected because terrorism or illegal-content risk exceeded the allowed threshold.",
         )
 
-    # ── Tier 4: Self-harm / violence / weapons (heritage-aware) ──────────────
+    # â”€â”€ Tier 4: Self-harm / violence / weapons (heritage-aware) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if self_harm_eval > SELF_HARM_THRESHOLD:
         if is_heritage:
             return (
@@ -636,7 +636,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Rejected because weapon-content risk exceeded the allowed threshold.",
         )
 
-    # ── Tier 5: Adult content (heritage exception) ────────────────────────────
+    # â”€â”€ Tier 5: Adult content (heritage exception) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     adult_content_detected = adult_score > ADULT_REJECT_THRESHOLD
     heritage_exception_candidate = (
         adult_content_detected and heritage_score > HERITAGE_REVIEW_THRESHOLD
@@ -648,7 +648,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Rejected because adult-content risk exceeded the allowed threshold without sufficient heritage relevance.",
         )
 
-    # ── Tier 6: Privacy / fraud / hate / harassment ───────────────────────────
+    # â”€â”€ Tier 6: Privacy / fraud / hate / harassment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if pii_score > PRIVACY_THRESHOLD:
         return (
             "UNDER_REVIEW",
@@ -674,7 +674,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Rejected because harassment or targeted-abuse risk exceeded the allowed threshold.",
         )
 
-    # ── Tier 7: Quality / promotion ───────────────────────────────────────────
+    # â”€â”€ Tier 7: Quality / promotion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if promotion_score > PROMOTION_THRESHOLD:
         return (
             "UNDER_REVIEW",
@@ -688,7 +688,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Content quality risk exceeded the automatic approval threshold.",
         )
 
-    # ── Tier 8: Ensemble catch-all ────────────────────────────────────────────
+    # â”€â”€ Tier 8: Ensemble catch-all â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if effective_ensemble_risk > ENSEMBLE_RISK_THRESHOLD:
         return (
             "UNDER_REVIEW",
@@ -696,7 +696,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Combined model risk score is elevated; routed for human review.",
         )
 
-    # ── Tier 8.5: High uncertainty → route to human review ───────────────────
+    # â”€â”€ Tier 8.5: High uncertainty â†’ route to human review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if uncertainty_score > UNCERTAINTY_REVIEW_THRESHOLD:
         return (
             "UNDER_REVIEW",
@@ -704,7 +704,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "High model uncertainty detected; routed for human review.",
         )
 
-    # ── Tier 9: Disagreement detection ───────────────────────────────────────
+    # â”€â”€ Tier 9: Disagreement detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Catches sub-threshold but elevated risk coexisting with high heritage,
     # e.g. mythological battle scenes, fire rituals, festival children.
     if _has_model_disagreement(
@@ -716,7 +716,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Elevated risk signal alongside high heritage score indicates ambiguous cultural content; routed for human review.",
         )
 
-    # ── Heritage review for borderline adult + heritage ───────────────────────
+    # â”€â”€ Heritage review for borderline adult + heritage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if heritage_exception_candidate:
         return (
             "UNDER_REVIEW",
@@ -724,7 +724,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
             "Adult-content risk detected alongside strong heritage relevance; routed for heritage exception review.",
         )
 
-    # ── Tier 10: Confidence gate — never auto-approve uncertain content ────────
+    # â”€â”€ Tier 10: Confidence gate â€” never auto-approve uncertain content â”€â”€â”€â”€â”€â”€â”€â”€
     # If ANY elevated signal exists but stayed below hard-reject thresholds,
     # route to REVIEW rather than APPROVE.
     _any_elevated = max(
@@ -741,7 +741,7 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
     )
     if _any_elevated >= 0.20:
         logger.info(
-            "Tier-10 confidence gate → UNDER_REVIEW (any_elevated=%.3f)",
+            "Tier-10 confidence gate â†’ UNDER_REVIEW (any_elevated=%.3f)",
             _any_elevated,
         )
         return (
@@ -751,11 +751,11 @@ def _evaluate(scores: dict[str, float]) -> tuple[str, str, str]:
         )
 
     if uncertainty_score >= 0.25:
-        logger.info("Tier-10 uncertainty gate → UNDER_REVIEW (uncertainty=%.3f)", uncertainty_score)
+        logger.info("Tier-10 uncertainty gate â†’ UNDER_REVIEW (uncertainty=%.3f)", uncertainty_score)
         return (
             "UNDER_REVIEW",
             HIGH_UNCERTAINTY,
-            "Low model confidence — routed for human review rather than automatic approval.",
+            "Low model confidence â€” routed for human review rather than automatic approval.",
         )
 
     return (
@@ -779,3 +779,4 @@ def get_reason_code(scores: dict[str, float]) -> str:
 def decide_with_reason_code(scores: dict[str, float]) -> tuple[str, str, str]:
     """Return (decision, reason_code, human_reason)."""
     return _evaluate(scores)
+

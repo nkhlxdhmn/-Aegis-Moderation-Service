@@ -1,0 +1,46 @@
+﻿{
+  "info": {
+    "name": "Aegis Moderation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Dashboard",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/"
+      }
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/health"
+      }
+    },
+    {
+      "name": "Model Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/model-health"
+      }
+    },
+    {
+      "name": "Moderate Image URL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"image_url\": \"https://example.com/safe-image.jpg\",\n  \"caption\": \"A public demo image.\"\n}"
+        },
+        "url": "{{base_url}}/api/v1/moderate"
+      }
+    }
+  ],
+  "variable": [
+    {"key": "base_url", "value": "http://localhost:8000"}
+  ]
+}

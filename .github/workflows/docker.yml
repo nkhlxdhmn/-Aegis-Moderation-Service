@@ -1,0 +1,16 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -t aegis-moderation:ci .
+      - name: Build development image
+        run: docker build -f Dockerfile.dev -t aegis-moderation-dev:ci .

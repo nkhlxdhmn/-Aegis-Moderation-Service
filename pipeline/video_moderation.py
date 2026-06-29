@@ -1,4 +1,4 @@
-"""Video post moderation pipeline for MyItihas.
+﻿"""Video post moderation pipeline for Aegis.
 
 Workflow:
   1. Validate video file.
@@ -7,15 +7,15 @@ Workflow:
      which reuses the full image pipeline (NSFW, YOLO, SigLIP2, OCR, BLIP,
      Qwen2.5-VL, Llama).
   4. Aggregate per-frame scores: max score per key + temporal metrics.
-  5. Extract audio with ffmpeg → 16 kHz mono WAV.
+  5. Extract audio with ffmpeg â†’ 16 kHz mono WAV.
   6. Transcribe audio with Whisper-large-v3.
   7. Moderate transcript with text_moderation.moderate_text().
   8. Merge frame scores + transcript scores + video temporal metrics.
   9. Feed final scores dict to decision_engine.decide_with_reason_code().
 
 Video-specific score keys (read by Tier 0-D in decision_engine.py):
-  video_unsafe_frame_ratio        — fraction of frames classified as unsafe
-  video_consecutive_unsafe_frames — longest run of consecutive unsafe frames
+  video_unsafe_frame_ratio        â€” fraction of frames classified as unsafe
+  video_consecutive_unsafe_frames â€” longest run of consecutive unsafe frames
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
-# ── Constants ──────────────────────────────────────────────────────────────────
+# â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 WHISPER_MODEL_ID = "openai/whisper-large-v3"
 WHISPER_DEVICE = "cuda:1"          # shares GPU with Llama / BLIP
@@ -43,7 +43,7 @@ FRAME_JPEG_QUALITY = 2             # ffmpeg -q:v (1=best, 31=worst); 2 = high qu
 # A frame is "unsafe" when any key danger score exceeds this threshold.
 _FRAME_UNSAFE_THRESHOLD = 0.55
 
-# ── Whisper singleton ──────────────────────────────────────────────────────────
+# â”€â”€ Whisper singleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass
 class _WhisperState:
@@ -74,13 +74,13 @@ def _get_whisper() -> _WhisperState | None:
             _whisper_state = _WhisperState(pipe=pipe)
             logger.info("Whisper-large-v3 loaded")
         except ImportError:
-            logger.warning("transformers not available — audio transcription disabled")
+            logger.warning("transformers not available â€” audio transcription disabled")
         except Exception:
-            logger.exception("Whisper failed to load — audio transcription disabled")
+            logger.exception("Whisper failed to load â€” audio transcription disabled")
     return _whisper_state
 
 
-# ── Result dataclass ───────────────────────────────────────────────────────────
+# â”€â”€ Result dataclass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @dataclass(frozen=True)
 class VideoModerationResult:
@@ -95,7 +95,7 @@ class VideoModerationResult:
     error_reason: str | None = None
 
 
-# ── ffmpeg helpers ─────────────────────────────────────────────────────────────
+# â”€â”€ ffmpeg helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _run_ffmpeg(args: list[str], description: str) -> bool:
     """Run an ffmpeg command. Returns True on success."""
@@ -113,7 +113,7 @@ def _run_ffmpeg(args: list[str], description: str) -> bool:
             return False
         return True
     except FileNotFoundError:
-        logger.error("ffmpeg not found — install ffmpeg and ensure it is on PATH")
+        logger.error("ffmpeg not found â€” install ffmpeg and ensure it is on PATH")
         return False
     except subprocess.TimeoutExpired:
         logger.error("ffmpeg %s timed out", description)
@@ -162,7 +162,7 @@ def _extract_audio(video_path: str, audio_path: str) -> bool:
     )
 
 
-# ── Transcription ──────────────────────────────────────────────────────────────
+# â”€â”€ Transcription â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _transcribe_audio(audio_path: str) -> str:
     """Return Whisper transcript, or empty string on failure."""
@@ -170,7 +170,7 @@ def _transcribe_audio(audio_path: str) -> str:
     if state is None:
         return ""
     if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 1024:
-        logger.info("Audio file too small or missing — skipping transcription")
+        logger.info("Audio file too small or missing â€” skipping transcription")
         return ""
     try:
         logger.info("Whisper transcription started")
@@ -184,7 +184,7 @@ def _transcribe_audio(audio_path: str) -> str:
         return ""
 
 
-# ── Per-frame risk helpers ─────────────────────────────────────────────────────
+# â”€â”€ Per-frame risk helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _frame_risk(scores: dict[str, float]) -> float:
     """Compute a single risk value for one frame."""
@@ -224,7 +224,7 @@ def _snapshot(scores: dict[str, float]) -> dict[str, float]:
     return {k: round(scores.get(k, 0.0), 4) for k in _FRAME_SNAPSHOT_KEYS}
 
 
-# ── Score aggregation ──────────────────────────────────────────────────────────
+# â”€â”€ Score aggregation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _aggregate_frame_scores(
     frame_results: list,  # list[ModerationPipelineResult]
@@ -300,7 +300,7 @@ def _merge_scores(
     return final
 
 
-# ── Public API ─────────────────────────────────────────────────────────────────
+# â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def moderate_video(
     video_path: str,
@@ -338,7 +338,7 @@ def moderate_video(
             audio_path = os.path.join(tmp, "audio.wav")
             os.makedirs(frames_dir, exist_ok=True)
 
-            # ── Stage 1: Frame extraction ──────────────────────────────────
+            # â”€â”€ Stage 1: Frame extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             frame_paths = _extract_frames(video_path, frames_dir)
             if not frame_paths:
                 return VideoModerationResult(
@@ -350,12 +350,12 @@ def moderate_video(
                     unsafe_frame_count=0,
                     max_consecutive_unsafe=0,
                     pipeline_error=True,
-                    error_reason="Frame extraction failed — check ffmpeg installation.",
+                    error_reason="Frame extraction failed â€” check ffmpeg installation.",
                 )
 
             frame_count = len(frame_paths)
 
-            # ── Stage 2: Concurrent frame moderation ──────────────────────
+            # â”€â”€ Stage 2: Concurrent frame moderation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             from pipeline.batch_analyzer import analyze_batch
 
             items: list[tuple[str, str | None]] = [
@@ -364,7 +364,7 @@ def moderate_video(
             frame_results = analyze_batch(items, queue_depth=frame_count)
             logger.info("Frame moderation completed (%d frames)", len(frame_results))
 
-            # ── Stage 3: Aggregate frame scores ───────────────────────────
+            # â”€â”€ Stage 3: Aggregate frame scores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             frame_max, unsafe_flags, snapshots = _aggregate_frame_scores(frame_results)
             unsafe_count = sum(unsafe_flags)
             consecutive = _max_consecutive_unsafe(unsafe_flags)
@@ -375,15 +375,15 @@ def moderate_video(
                 unsafe_count, frame_count, unsafe_ratio * 100, consecutive,
             )
 
-            # ── Stage 4: Audio extraction ──────────────────────────────────
+            # â”€â”€ Stage 4: Audio extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             has_audio = _extract_audio(video_path, audio_path)
 
-            # ── Stage 5: Whisper transcription ────────────────────────────
+            # â”€â”€ Stage 5: Whisper transcription â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             transcript = ""
             if has_audio:
                 transcript = _transcribe_audio(audio_path)
 
-            # ── Stage 6: Text moderation on transcript ─────────────────────
+            # â”€â”€ Stage 6: Text moderation on transcript â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             text_scores: dict[str, float] = {}
             if transcript:
                 from pipeline.text_moderation import moderate_text
@@ -394,7 +394,7 @@ def moderate_video(
                     text_scores.get("ensemble_risk_score", 0.0),
                 )
 
-            # ── Stage 7: Merge all signals ─────────────────────────────────
+            # â”€â”€ Stage 7: Merge all signals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             final_scores = _merge_scores(
                 frame_max=frame_max,
                 text_scores=text_scores,
@@ -432,3 +432,4 @@ def moderate_video(
             pipeline_error=True,
             error_reason=str(exc),
         )
+

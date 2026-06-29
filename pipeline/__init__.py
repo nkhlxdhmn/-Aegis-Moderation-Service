@@ -1,4 +1,4 @@
-"""Moderation pipeline package for MyItihas content safety decisions."""
+﻿"""Moderation pipeline package for Aegis content safety decisions."""
 
 import os
 
@@ -6,3 +6,4 @@ import os
 # the container to GPU 0 via device_ids; this guards against misconfigurations
 # when the container is run outside compose (e.g. bare docker run).
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0,1")
+
