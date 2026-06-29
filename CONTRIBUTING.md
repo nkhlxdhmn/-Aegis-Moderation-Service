@@ -1,83 +1,68 @@
-# Contributing
+# Contributing to Aegis Moderation
 
-Thanks for helping improve Aegis Moderation.
+Thank you for your interest in contributing to Aegis Moderation!
 
----
+This project is a standalone, AI-powered multimodal content moderation platform designed for privacy, speed, and ease of deployment.
 
-## Development Setup
+## Local Development
+
+### Requirements
+- Python 3.11+
+- Make
+- Docker (optional but recommended)
+
+### Setup
 
 ```bash
-git clone https://github.com/your-org/aegis-moderation.git
-cd aegis-moderation
-
+git clone https://github.com/nkhlxdhmn/-Aegis-Moderation-Service.git
+cd -Aegis-Moderation-Service
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+# source .venv/bin/activate        # Linux/macOS
+# .venv\Scripts\activate           # Windows
+
+make install
 ```
 
----
+### Pre-warm Models (Optional)
 
-## Before You Start
-
-- Open an issue or draft PR to discuss changes before writing substantial code.
-- Preserve existing AI model and pipeline behaviour — changes to `backend/pipeline/` require test coverage.
-- Do not introduce Supabase, Redis, PostgreSQL, or any external service dependencies.
-
----
-
-## Running Tests
+Model weights are downloaded automatically on first use, but you can download them ahead of time:
 
 ```bash
-# Core endpoint + report tests (fast, no models required)
-python -m pytest tests/test_main.py tests/test_standalone_report.py -v
-
-# Full test suite (requires model stack)
-python -m pytest -v
+python scripts/setup_models.py
 ```
 
----
-
-## Lint & Format
+### Running the Server
 
 ```bash
-ruff check .
-black --check .
-mypy backend/ --ignore-missing-imports --no-error-summary
-
-# Auto-fix formatting
-black .
-ruff check . --fix
+make run
+# Opens at http://localhost:8000
 ```
 
-All CI checks (tests, ruff, black, mypy, Docker build) must pass before a PR can be merged.
+## Docker Workflows
 
----
+The repository uses two Docker configurations:
 
-## Adding a New Moderation Pipeline Stage
+1. **CPU Default (Local testing/Dev)**
+   ```bash
+   docker compose up --build
+   ```
+2. **GPU Optimized (Production/NVIDIA)**
+   ```bash
+   docker compose -f docker-compose.gpu.yml up --build
+   ```
 
-1. Create or extend a module under `backend/pipeline/`.
-2. Import and call it from the appropriate orchestrator (`safety_flags.py`, `text_moderation.py`, or `video_moderation.py`).
-3. Map any new signal to an existing category in `backend/reports.py` (or add a category with a clear taxonomy label).
-4. Write a unit test that mocks the model call and verifies the report output.
+## Guidelines
 
----
+1. **Standalone Architecture**: Do not add dependencies on external services (Redis, databases, cloud APIs). The app must remain 100% self-contained.
+2. **Type Hints**: All new Python code must be fully type-hinted.
+3. **Tests**: Add unit tests for new features. Ensure `make test` passes.
+4. **Code Style**: Run `make format` (Ruff + Black) before submitting PRs.
+5. **Frontend**: The frontend (`index.html`, `dashboard.html`) is pure vanilla JS/CSS. Do not introduce npm, build steps, or frameworks like React/Vue.
 
-## Pull Request Guidelines
+## Submitting a Pull Request
 
-- Keep PRs focused: one feature or bug fix per PR.
-- Include a short description of the change and why it is needed.
-- Reference any related issue with `Closes #N`.
-- Ensure `python -m pytest tests/test_main.py tests/test_standalone_report.py -v` passes.
-
----
-
-## Commit Style
-
-```
-feat: short imperative description
-fix: what was broken and how it is fixed
-docs: what was documented
-chore: dependency bump, cleanup
-```
-
-No period at the end of the subject line. Keep the subject under 72 characters.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes
+4. Run `make lint` and `make test`
+5. Open a Pull Request against `main`

@@ -2,23 +2,32 @@ services:
   aegis-moderation:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: aegis-moderation:1.0.0
+      dockerfile: Dockerfile.gpu
+    image: aegis-moderation-gpu:1.0.0
     ports:
       - "8000:8000"
     restart: unless-stopped
     environment:
       ENVIRONMENT: production
       MODEL_WARMUP: "false"
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
     volumes:
       - hf_cache:/home/aegis/.cache/huggingface
       - app_data:/app/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 120s
 
 volumes:
   hf_cache:

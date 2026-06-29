@@ -1,0 +1,5 @@
+# Pin torch to the exact version installed from the cu124 index.
+# This prevents any dependency (ultralytics, transformers, etc.)
+# from upgrading torch and pulling in ~1.5 GB of different CUDA libs.
+torch==2.5.1+cu124
+torchvision==0.20.1+cu124

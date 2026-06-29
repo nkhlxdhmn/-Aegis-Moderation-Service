@@ -1,1122 +1,334 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aegis — Monitoring Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <title>Aegis Moderation — Monitoring Dashboard</title>
+  <meta name="description" content="Real-time system monitoring and AI model observability for Aegis Moderation." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:         #f0f4f3;
-      --panel:      rgba(255,255,255,0.97);
-      --ink:        #16201d;
-      --muted:      #60716b;
-      --line:       #d9e1de;
-      --accent:     #0f766e;
-      --accent-s:   #115e59;
-      --accent-l:   #e7f3f1;
-      --warn:       #b45309;
-      --warn-l:     #fff8eb;
-      --danger:     #b91c1c;
-      --danger-l:   #fee2e2;
-      --ok:         #15803d;
-      --ok-l:       #dcfce7;
-      --shadow:     0 4px 24px rgba(18,32,29,.10);
-      --radius:     10px;
-      --font:       Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --bg:#ffffff;--bg2:#f4f4f4;--panel:#ffffff;--panel-solid:#fff;
+      --ink:#000000;--ink2:#333333;--muted:#666666;--line:#dddddd;
+      --accent:#0055cc;--accent-h:#0044aa;--accent-l:#eef4ff;
+      --green:#008800;--green-l:#e6f5e6;
+      --warn:#cc7700;--warn-l:#fff3e0;
+      --danger:#cc0000;--danger-l:#ffe6e6;
+      --blue:#0055cc;--blue-l:#eef4ff;
+      --shadow:0 2px 4px rgba(0,0,0,0.05);--radius:4px;--radius-sm:4px;
+      --font:'Inter',ui-sans-serif,system-ui,sans-serif;--blur:0px;
+      --gradient:#0055cc;
     }
-    [data-theme="dark"] {
-      --bg:         #0f1614;
-      --panel:      rgba(22,35,30,0.97);
-      --ink:        #e9f4f1;
-      --muted:      #8fa89e;
-      --line:       #2a3d36;
-      --accent:     #2dd4bf;
-      --accent-s:   #5eead4;
-      --accent-l:   #162420;
-      --warn:       #fbbf24;
-      --warn-l:     #1c160a;
-      --danger:     #f87171;
-      --danger-l:   #1a0707;
-      --ok:         #4ade80;
-      --ok-l:       #052e16;
-      --shadow:     0 4px 24px rgba(0,0,0,.4);
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--ink);
-      font-size: 14px;
-      line-height: 1.5;
-      min-height: 100vh;
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.6;transition:none;}
+    button{font:inherit;cursor:pointer;border:none;}
+    a{color:var(--accent);text-decoration:none;}
+    .shell{width:min(1400px,calc(100% - 40px));margin:0 auto;padding:28px 0 60px;}
 
-    /* ── Header ──────────────────────────────────────────────────────────── */
-    header {
-      background: var(--panel);
-      border-bottom: 1px solid var(--line);
-      padding: 0 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      height: 56px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 1px 8px rgba(0,0,0,.06);
-    }
-    .header-logo {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: -.3px;
-    }
-    .header-badge {
-      background: var(--accent-l);
-      color: var(--accent);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 999px;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-    }
-    .header-spacer { flex: 1; }
-    .header-meta {
-      font-size: 12px;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .refresh-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--ok);
-      display: inline-block;
-    }
-    .refresh-dot.paused { background: var(--warn); }
-    .btn {
-      padding: 5px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--ink);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    .btn:hover { background: var(--accent-l); border-color: var(--accent); color: var(--accent); }
-    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .btn-primary:hover { background: var(--accent-s); }
-    a.btn { text-decoration: none; }
+    /* Header */
+    .header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:0 0 24px;flex-wrap:wrap;}
+    .brand{display:flex;align-items:center;gap:12px;}
+    .logo{width:40px;height:40px;border-radius:var(--radius-sm);background:var(--ink);display:grid;place-items:center;font-size:20px;font-weight:900;color:#fff;}
+    .brand-text h1{font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1.2;}
+    .brand-text span{font-size:12px;color:var(--muted);font-weight:600;}
+    .header-actions{display:flex;gap:8px;align-items:center;}
+    .pill{border:1px solid var(--line);border-radius:var(--radius-sm);padding:7px 14px;background:var(--bg2);color:var(--muted);font-weight:700;font-size:12px;transition:all .2s;display:flex;align-items:center;gap:6px;}
+    .pill:hover{border-color:var(--accent);color:var(--ink);}
+    .pill-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 
-    /* ── Tabs ────────────────────────────────────────────────────────────── */
-    .tab-bar {
-      display: flex;
-      gap: 2px;
-      padding: 12px 24px 0;
-      background: var(--panel);
-      border-bottom: 1px solid var(--line);
-      overflow-x: auto;
-    }
-    .tab-btn {
-      padding: 8px 16px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      white-space: nowrap;
-      transition: color .15s, border-color .15s;
-    }
-    .tab-btn:hover { color: var(--ink); }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    /* Cards */
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;}
+    .section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px;}
 
-    /* ── Layout ──────────────────────────────────────────────────────────── */
-    .content { padding: 24px; max-width: 1400px; margin: 0 auto; }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    /* Grid layouts */
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+    @media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+    @media(max-width:640px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}}
 
-    /* ── Cards ───────────────────────────────────────────────────────────── */
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-    }
-    .card-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
-    @media (max-width: 900px) {
-      .grid-4 { grid-template-columns: repeat(2, 1fr); }
-      .grid-3 { grid-template-columns: repeat(2, 1fr); }
-      .grid-2 { grid-template-columns: 1fr; }
-    }
-    .big-num {
-      font-size: 32px;
-      font-weight: 700;
-      line-height: 1.1;
-      color: var(--ink);
-    }
-    .big-sub {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-    }
+    /* Stat card */
+    .stat-card{display:flex;flex-direction:column;gap:4px;}
+    .stat-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+    .stat-value{font-size:28px;font-weight:900;letter-spacing:-0.02em;line-height:1;}
+    .stat-sub{font-size:12px;color:var(--muted);font-weight:600;}
 
-    /* ── Progress bar ────────────────────────────────────────────────────── */
-    .progress-wrap { margin-top: 8px; }
-    .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    .progress-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 4px; background: var(--accent); transition: width .4s; }
-    .progress-fill.warn { background: var(--warn); }
-    .progress-fill.danger { background: var(--danger); }
+    /* Gauge */
+    .gauge{position:relative;width:100%;padding-top:6px;}
+    .gauge-track{height:6px;border-radius:999px;background:var(--bg2);overflow:hidden;}
+    .gauge-fill{height:100%;border-radius:999px;transition:width .8s ease;}
+    .fill-green{background:var(--green);}
+    .fill-warn{background:var(--warn);}
+    .fill-danger{background:var(--danger);}
+    .fill-accent{background:var(--accent);}
 
-    /* ── Health status grid ──────────────────────────────────────────────── */
-    .health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
-    .health-card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .health-card.healthy { border-color: #86efac; background: var(--ok-l); }
-    .health-card.warning { border-color: #fcd34d; background: var(--warn-l); }
-    .health-card.offline { border-color: #fca5a5; background: var(--danger-l); }
-    .health-icon { font-size: 20px; }
-    .health-label { font-size: 13px; font-weight: 600; }
-    .health-status { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+    /* Health status */
+    .health-grid{display:grid;gap:8px;}
+    .health-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);background:var(--bg2);font-weight:600;font-size:13px;}
+    .health-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .dot-healthy{background:var(--green);}
+    .dot-warning{background:var(--warn);}
+    .dot-offline{background:var(--danger);}
 
-    /* ── Table ───────────────────────────────────────────────────────────── */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--line); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
-    td { padding: 8px 12px; border-bottom: 1px solid var(--line); }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--accent-l); }
+    /* Model cards */
+    .model-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+    .model-row:last-child{border:none;}
+    .model-badge{padding:3px 10px;border-radius:999px;font-weight:700;font-size:11px;}
+    .badge-loaded{background:var(--green-l);color:var(--green);}
+    .badge-not-loaded{background:var(--warn-l);color:var(--warn);}
+    .badge-disabled{background:var(--bg2);color:var(--muted);}
+    .badge-error{background:var(--danger-l);color:var(--danger);}
 
-    /* ── Log viewer ──────────────────────────────────────────────────────── */
-    .log-controls { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-    .log-controls input, .log-controls select {
-      padding: 6px 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: var(--panel);
-      color: var(--ink);
-      font-size: 13px;
-      outline: none;
-    }
-    .log-controls input:focus, .log-controls select:focus { border-color: var(--accent); }
-    .log-box {
-      height: 480px;
-      overflow-y: auto;
-      background: #0f1614;
-      border-radius: 8px;
-      padding: 12px;
-      font-family: "Fira Code", "Cascadia Code", monospace;
-      font-size: 12px;
-    }
-    .log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.04); color: #c9d8d2; }
-    .log-line .lvl { font-weight: 700; margin-right: 6px; }
-    .log-line .lvl.INFO  { color: #4ade80; }
-    .log-line .lvl.WARN, .log-line .lvl.WARNING { color: #fbbf24; }
-    .log-line .lvl.ERROR { color: #f87171; }
-    .log-line .lvl.DEBUG { color: #94a3b8; }
-    .log-line .ts { color: #64748b; margin-right: 6px; font-size: 11px; }
+    /* Bar chart */
+    .bar-chart{display:flex;align-items:flex-end;gap:6px;height:80px;padding-top:10px;}
+    .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+    .bar{width:100%;border-radius:4px 4px 0 0;background:var(--accent);opacity:.7;transition:height .5s ease;min-height:2px;}
+    .bar-label{font-size:9px;color:var(--muted);font-weight:700;}
 
-    /* ── Chart containers ────────────────────────────────────────────────── */
-    .chart-wrap { position: relative; height: 220px; }
-    .chart-wrap-tall { position: relative; height: 280px; }
+    /* Category stats */
+    .cat-stat{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px;font-weight:600;}
+    .cat-count{color:var(--accent);font-weight:800;}
 
-    /* ── Badge / pill ────────────────────────────────────────────────────── */
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .badge-ok    { background: var(--ok-l);     color: var(--ok); }
-    .badge-warn  { background: var(--warn-l);   color: var(--warn); }
-    .badge-error { background: var(--danger-l); color: var(--danger); }
-    .badge-info  { background: var(--accent-l); color: var(--accent); }
+    /* Refresh indicator */
+    .refresh-bar{position:fixed;top:0;left:0;height:2px;background:var(--gradient);z-index:9999;transition:width .3s;opacity:.6;}
 
-    /* ── Misc ────────────────────────────────────────────────────────────── */
-    .section-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--ink); }
-    .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
-    .uptime-bar { font-size: 24px; font-weight: 700; color: var(--accent); }
-    #toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--ink); color: var(--bg);
-      padding: 10px 18px; border-radius: 8px;
-      font-size: 13px; opacity: 0;
-      transition: opacity .3s;
-      pointer-events: none;
-      z-index: 9999;
-    }
-    #toast.show { opacity: 1; }
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+    .animate-in{animation:fadeUp .3s ease;}
   </style>
 </head>
 <body>
+<div class="refresh-bar" id="refreshBar" style="width:0%"></div>
+<div class="shell">
+  <header class="header">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div class="brand-text">
+        <h1>Monitoring Dashboard</h1>
+        <span>Aegis Moderation — Real-time Observability</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="pill" href="/" title="Moderation Interface">🛡️ Moderate</a>
+      <div class="pill" id="uptimePill"><span class="pill-dot"></span> —</div>
+      <button class="pill" id="darkToggle" title="Toggle theme">☀ Light</button>
+    </div>
+  </header>
 
-<header>
-  <span class="header-logo">Aegis</span>
-  <span class="header-badge">Monitoring</span>
-  <div class="header-spacer"></div>
-  <div class="header-meta">
-    <span id="lastUpdated">—</span>
-    <span class="refresh-dot" id="refreshDot"></span>
-    <button class="btn" id="toggleRefresh">Pause</button>
-    <button class="btn" onclick="fetchAll()">Refresh</button>
-    <button class="btn" onclick="toggleTheme()">🌙</button>
-    <a class="btn" href="/">← App</a>
-  </div>
-</header>
-
-<div class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
-  <button class="tab-btn" onclick="switchTab('system')">System</button>
-  <button class="tab-btn" onclick="switchTab('models')">AI Models</button>
-  <button class="tab-btn" onclick="switchTab('analytics')">Analytics</button>
-  <button class="tab-btn" onclick="switchTab('performance')">Performance</button>
-  <button class="tab-btn" onclick="switchTab('logs')">Logs</button>
-  <button class="tab-btn" onclick="switchTab('security')">Security</button>
-  <button class="tab-btn" onclick="switchTab('export')">Export</button>
-</div>
-
-<!-- ───────────────── OVERVIEW ───────────────── -->
-<div class="content tab-panel active" id="tab-overview">
-  <p class="section-title">Health Status</p>
-  <div class="health-grid" id="healthGrid">
-    <div class="empty">Loading…</div>
+  <!-- Health Status -->
+  <div class="grid-2" id="healthSection">
+    <div class="card">
+      <div class="section-title">Component Health</div>
+      <div class="health-grid" id="healthGrid"><div class="health-row"><span class="health-dot dot-warning"></span> Loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="section-title">AI Models</div>
+      <div id="modelList"><div class="model-row">Loading…</div></div>
+    </div>
   </div>
 
+  <!-- System Metrics -->
+  <div class="section-title" style="margin-bottom:14px;">System Resources</div>
+  <div class="grid-4" id="systemCards">
+    <div class="card stat-card" id="cpuCard"><span class="stat-label">CPU Usage</span><span class="stat-value">—</span><div class="gauge"><div class="gauge-track"><div class="gauge-fill fill-green" id="cpuGauge" style="width:0%"></div></div></div></div>
+    <div class="card stat-card" id="memCard"><span class="stat-label">Memory</span><span class="stat-value">—</span><div class="gauge"><div class="gauge-track"><div class="gauge-fill fill-accent" id="memGauge" style="width:0%"></div></div></div></div>
+    <div class="card stat-card" id="diskCard"><span class="stat-label">Disk</span><span class="stat-value">—</span><div class="gauge"><div class="gauge-track"><div class="gauge-fill fill-accent" id="diskGauge" style="width:0%"></div></div></div></div>
+    <div class="card stat-card" id="gpuCard"><span class="stat-label">GPU</span><span class="stat-value">N/A</span><div class="gauge"><div class="gauge-track"><div class="gauge-fill fill-green" id="gpuGauge" style="width:0%"></div></div></div></div>
+  </div>
+
+  <!-- Request Analytics -->
+  <div class="section-title" style="margin-bottom:14px;">Request Analytics</div>
   <div class="grid-4">
-    <div class="card">
-      <div class="card-title">Total Requests</div>
-      <div class="big-num" id="ov-total">—</div>
-      <div class="big-sub">Since startup</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Success Rate</div>
-      <div class="big-num" id="ov-success-rate">—</div>
-      <div class="big-sub" id="ov-ok-fail">—</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Avg Response Time</div>
-      <div class="big-num" id="ov-avg-rt">—</div>
-      <div class="big-sub">seconds</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Requests / Second</div>
-      <div class="big-num" id="ov-rps">—</div>
-      <div class="big-sub">Last 60 s window</div>
-    </div>
+    <div class="card stat-card"><span class="stat-label">Total Requests</span><span class="stat-value" id="reqTotal">0</span></div>
+    <div class="card stat-card"><span class="stat-label">Successful</span><span class="stat-value" id="reqOk" style="color:var(--green);">0</span></div>
+    <div class="card stat-card"><span class="stat-label">Failed</span><span class="stat-value" id="reqFail" style="color:var(--danger);">0</span></div>
+    <div class="card stat-card"><span class="stat-label">Avg Response</span><span class="stat-value" id="reqAvg">0s</span></div>
   </div>
 
+  <!-- Request History & Content Types -->
   <div class="grid-2">
     <div class="card">
-      <div class="card-title">Moderation Decisions</div>
-      <div class="chart-wrap">
-        <canvas id="decisionsChart"></canvas>
-      </div>
+      <div class="section-title">Request History (10s buckets)</div>
+      <div class="bar-chart" id="historyChart"></div>
     </div>
     <div class="card">
-      <div class="card-title">Category Flags (top items flagged)</div>
-      <div class="chart-wrap">
-        <canvas id="categoryOverviewChart"></canvas>
+      <div class="section-title">Content Processed</div>
+      <div id="contentTypes">
+        <div class="cat-stat"><span>Images</span><span class="cat-count" id="ctImage">0</span></div>
+        <div class="cat-stat"><span>Videos</span><span class="cat-count" id="ctVideo">0</span></div>
+        <div class="cat-stat"><span>Text</span><span class="cat-count" id="ctText">0</span></div>
+        <div class="cat-stat"><span>PDFs</span><span class="cat-count" id="ctPdf">0</span></div>
+        <div class="cat-stat"><span>DOCX</span><span class="cat-count" id="ctDocx">0</span></div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ───────────────── SYSTEM ───────────────── -->
-<div class="content tab-panel" id="tab-system">
-  <div class="grid-4">
-    <div class="card">
-      <div class="card-title">CPU Usage</div>
-      <div class="big-num" id="sys-cpu">—</div>
-      <div class="progress-wrap">
-        <div class="progress-label"><span>Usage</span><span id="sys-cpu-pct">—</span></div>
-        <div class="progress-bar"><div class="progress-fill" id="sys-cpu-bar" style="width:0%"></div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Memory</div>
-      <div class="big-num" id="sys-mem">—</div>
-      <div class="progress-wrap">
-        <div class="progress-label"><span>Used</span><span id="sys-mem-pct">—</span></div>
-        <div class="progress-bar"><div class="progress-fill" id="sys-mem-bar" style="width:0%"></div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Disk</div>
-      <div class="big-num" id="sys-disk">—</div>
-      <div class="progress-wrap">
-        <div class="progress-label"><span>Used</span><span id="sys-disk-pct">—</span></div>
-        <div class="progress-bar"><div class="progress-fill" id="sys-disk-bar" style="width:0%"></div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Uptime</div>
-      <div class="uptime-bar" id="sys-uptime">—</div>
-      <div class="big-sub" id="sys-threads">— threads</div>
-    </div>
-  </div>
-
+  <!-- Performance & Category Flags -->
   <div class="grid-2">
     <div class="card">
-      <div class="card-title">Process Info</div>
-      <table>
-        <tbody id="sysProcessTable">
-          <tr><td colspan="2" class="empty">Loading…</td></tr>
-        </tbody>
-      </table>
+      <div class="section-title">Inference Performance</div>
+      <div id="perfStats">
+        <div class="cat-stat"><span>End-to-End</span><span class="cat-count" id="perfE2e">—</span></div>
+        <div class="cat-stat"><span>OCR</span><span class="cat-count" id="perfOcr">—</span></div>
+        <div class="cat-stat"><span>Vision</span><span class="cat-count" id="perfVision">—</span></div>
+        <div class="cat-stat"><span>NLP</span><span class="cat-count" id="perfNlp">—</span></div>
+        <div class="cat-stat"><span>Throughput</span><span class="cat-count" id="perfThroughput">—</span></div>
+      </div>
     </div>
     <div class="card">
-      <div class="card-title">Network I/O</div>
-      <table>
-        <tbody id="sysNetTable">
-          <tr><td colspan="2" class="empty">Loading…</td></tr>
-        </tbody>
-      </table>
+      <div class="section-title">Category Flags (score &gt; 50%)</div>
+      <div id="catFlags"><span style="color:var(--muted);font-size:13px;">No flags yet</span></div>
     </div>
   </div>
 
-  <div class="card" id="gpuCard" style="margin-bottom:0">
-    <div class="card-title">GPU Devices</div>
-    <div id="gpuContent"><div class="empty">No GPU detected / CUDA unavailable</div></div>
-  </div>
 </div>
-
-<!-- ───────────────── AI MODELS ───────────────── -->
-<div class="content tab-panel" id="tab-models">
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Model Status</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Model</th><th>Status</th><th>Load Time</th></tr></thead>
-          <tbody id="modelStatusTable"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Inference Times (avg ms)</div>
-      <div class="chart-wrap">
-        <canvas id="inferenceChart"></canvas>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Per-Model Inference Breakdown</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Model</th><th>Avg (ms)</th><th>Min (ms)</th><th>Max (ms)</th><th>Samples</th></tr></thead>
-        <tbody id="inferenceTable"><tr><td colspan="5" class="empty">No inference data yet</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ───────────────── ANALYTICS ───────────────── -->
-<div class="content tab-panel" id="tab-analytics">
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Content Type Distribution</div>
-      <div class="chart-wrap">
-        <canvas id="contentTypeChart"></canvas>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Request Rate (10-second buckets)</div>
-      <div class="chart-wrap">
-        <canvas id="requestHistoryChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Category Flags</div>
-      <div class="chart-wrap-tall">
-        <canvas id="categoryChart"></canvas>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Moderation Stats</div>
-      <div class="grid-2" style="margin-bottom:0">
-        <div>
-          <p class="card-title">Images</p>
-          <div class="big-num" id="mod-images">0</div>
-        </div>
-        <div>
-          <p class="card-title">Videos</p>
-          <div class="big-num" id="mod-videos">0</div>
-        </div>
-        <div>
-          <p class="card-title">PDFs</p>
-          <div class="big-num" id="mod-pdfs">0</div>
-        </div>
-        <div>
-          <p class="card-title">DOCX</p>
-          <div class="big-num" id="mod-docx">0</div>
-        </div>
-        <div>
-          <p class="card-title">Text</p>
-          <div class="big-num" id="mod-text">0</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Slowest Requests</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Endpoint</th><th>Duration (s)</th><th>Decision</th><th>Time</th></tr></thead>
-        <tbody id="slowestTable"><tr><td colspan="4" class="empty">No requests yet</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ───────────────── PERFORMANCE ───────────────── -->
-<div class="content tab-panel" id="tab-performance">
-  <div class="grid-4">
-    <div class="card">
-      <div class="card-title">E2E Latency</div>
-      <div class="big-num" id="perf-e2e">—</div>
-      <div class="big-sub">seconds avg</div>
-    </div>
-    <div class="card">
-      <div class="card-title">OCR Time</div>
-      <div class="big-num" id="perf-ocr">—</div>
-      <div class="big-sub">seconds avg</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Vision Time</div>
-      <div class="big-num" id="perf-vision">—</div>
-      <div class="big-sub">seconds avg</div>
-    </div>
-    <div class="card">
-      <div class="card-title">NLP Time</div>
-      <div class="big-num" id="perf-nlp">—</div>
-      <div class="big-sub">seconds avg</div>
-    </div>
-  </div>
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Throughput</div>
-      <div class="big-num" id="perf-throughput">—</div>
-      <div class="big-sub">items / minute (5-min window)</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Inference Breakdown (avg seconds)</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Stage</th><th>Avg (s)</th></tr></thead>
-          <tbody id="perfBreakdownTable"><tr><td colspan="2" class="empty">No data</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ───────────────── LOGS ───────────────── -->
-<div class="content tab-panel" id="tab-logs">
-  <div class="log-controls">
-    <select id="logLevel" onchange="fetchLogs()">
-      <option value="">All Levels</option>
-      <option value="DEBUG">DEBUG</option>
-      <option value="INFO">INFO</option>
-      <option value="WARNING">WARNING</option>
-      <option value="ERROR">ERROR</option>
-    </select>
-    <input type="text" id="logSearch" placeholder="Search logs…" oninput="fetchLogs()" style="min-width:220px">
-    <button class="btn" onclick="fetchLogs()">Refresh</button>
-    <button class="btn" onclick="downloadLogs()">Download</button>
-    <span id="logCount" style="color:var(--muted);font-size:12px;padding-left:4px"></span>
-  </div>
-  <div class="log-box" id="logBox">
-    <div style="color:#64748b">Loading logs…</div>
-  </div>
-</div>
-
-<!-- ───────────────── SECURITY ───────────────── -->
-<div class="content tab-panel" id="tab-security">
-  <div class="grid-4" style="margin-bottom:20px">
-    <div class="card">
-      <div class="card-title">Total Security Events</div>
-      <div class="big-num" id="sec-total">0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Total Errors</div>
-      <div class="big-num" id="err-total">0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Blocked File Types</div>
-      <div class="big-num" id="sec-blocked-files">0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Oversized Uploads</div>
-      <div class="big-num" id="sec-oversized">0</div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Security Events by Type</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Event Type</th><th>Count</th></tr></thead>
-          <tbody id="secTypeTable"><tr><td colspan="2" class="empty">No events</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Error Breakdown</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Error Type</th><th>Count</th></tr></thead>
-          <tbody id="errTypeTable"><tr><td colspan="2" class="empty">No errors</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Recent Security Events</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>
-        <tbody id="secRecentTable"><tr><td colspan="3" class="empty">No events</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:20px">
-    <div class="card-title">Recent Errors</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Time</th><th>Endpoint</th><th>Type</th><th>Detail</th></tr></thead>
-        <tbody id="errRecentTable"><tr><td colspan="4" class="empty">No errors</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ───────────────── EXPORT ───────────────── -->
-<div class="content tab-panel" id="tab-export">
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Export Monitoring Data</div>
-      <p style="margin-bottom:16px;color:var(--muted)">Download a snapshot of all current monitoring metrics.</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a class="btn btn-primary" href="/api/v1/monitor/export?format=json" download="aegis_metrics.json">Download JSON</a>
-        <a class="btn" href="/api/v1/monitor/export?format=csv" download="aegis_metrics.csv">Download CSV</a>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Prometheus Metrics</div>
-      <p style="margin-bottom:16px;color:var(--muted)">Raw Prometheus scrape endpoint for external monitoring systems.</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <a class="btn" href="/metrics" target="_blank">View /metrics</a>
-        <a class="btn" href="/api/v1/monitor/all" target="_blank">View Raw JSON</a>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Prometheus / Grafana Setup</div>
-    <p style="color:var(--muted);margin-bottom:12px">
-      The <code>/metrics</code> endpoint exposes Prometheus-compatible metrics.
-      A sample <code>prometheus.yml</code> and Grafana dashboard are in the
-      <code>monitoring/</code> directory.
-    </p>
-    <pre style="background:var(--bg);padding:14px;border-radius:8px;font-size:12px;overflow-x:auto;color:var(--muted)">scrape_configs:
-  - job_name: aegis_moderation
-    static_configs:
-      - targets: [localhost:8000]
-    metrics_path: /metrics</pre>
-  </div>
-</div>
-
-<div id="toast"></div>
 
 <script>
-const API = '/api/v1/monitor';
-let refreshInterval = null;
-let charts = {};
-let allData = {};
+const $ = id => document.getElementById(id);
+const REFRESH_MS = 7000;
+let refreshTimer = null;
 
-// ── Theme ──────────────────────────────────────────────────────────────────
-function toggleTheme() {
-  const html = document.documentElement;
-  html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
-  Object.values(charts).forEach(c => {
-    if (c) { c.options.plugins.legend.labels.color = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(); c.update(); }
-  });
+/* ── Theme ──────────────────────────────────────────────────────────────── */
+function applyTheme(dark) {
+  document.documentElement.setAttribute("data-theme", "light");
 }
+(function() {
+  applyTheme(false);
+})();
+$("darkToggle").style.display = 'none';
 
-// ── Toast ──────────────────────────────────────────────────────────────────
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2500);
-}
-
-// ── Tabs ───────────────────────────────────────────────────────────────────
-function switchTab(name) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  document.querySelector(`.tab-btn[onclick="switchTab('${name}')"]`).classList.add('active');
-  if (name === 'logs') fetchLogs();
-}
-
-// ── Auto-refresh ──────────────────────────────────────────────────────────
-function startRefresh() {
-  if (refreshInterval) return;
-  refreshInterval = setInterval(fetchAll, 7000);
-  document.getElementById('refreshDot').classList.remove('paused');
-  document.getElementById('toggleRefresh').textContent = 'Pause';
-}
-function stopRefresh() {
-  clearInterval(refreshInterval); refreshInterval = null;
-  document.getElementById('refreshDot').classList.add('paused');
-  document.getElementById('toggleRefresh').textContent = 'Resume';
-}
-document.getElementById('toggleRefresh').onclick = () =>
-  refreshInterval ? stopRefresh() : startRefresh();
-
-// ── Chart helpers ─────────────────────────────────────────────────────────
-const COLORS = [
-  '#0f766e','#0369a1','#7c3aed','#b45309','#b91c1c',
-  '#15803d','#d97706','#6d28d9','#0891b2','#be185d',
-];
-function getColor(i) { return COLORS[i % COLORS.length]; }
-
-function initDoughnut(id, labels, data) {
-  const ctx = document.getElementById(id).getContext('2d');
-  if (charts[id]) { charts[id].destroy(); }
-  charts[id] = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{ data, backgroundColor: labels.map((_, i) => getColor(i)), borderWidth: 0 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 12 } } } }
-    }
-  });
-}
-
-function initBar(id, labels, data, horizontal = false) {
-  const ctx = document.getElementById(id).getContext('2d');
-  if (charts[id]) { charts[id].destroy(); }
-  charts[id] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data, backgroundColor: labels.map((_, i) => getColor(i)),
-        borderRadius: 4, borderSkipped: false,
-      }]
-    },
-    options: {
-      indexAxis: horizontal ? 'y' : 'x',
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(128,128,128,.1)' } } }
-    }
-  });
-}
-
-function initLine(id, labels, datasets) {
-  const ctx = document.getElementById(id).getContext('2d');
-  if (charts[id]) { charts[id].destroy(); }
-  charts[id] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: datasets.map((d, i) => ({
-        label: d.label,
-        data: d.data,
-        borderColor: getColor(i),
-        backgroundColor: getColor(i) + '22',
-        fill: true,
-        tension: 0.3,
-        pointRadius: 0,
-        borderWidth: 2,
-      }))
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: datasets.length > 1 } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } },
-        y: { grid: { color: 'rgba(128,128,128,.1)' }, beginAtZero: true }
-      }
-    }
-  });
-}
-
-function updateChart(id, newData, newLabels) {
-  const c = charts[id];
-  if (!c) return;
-  if (newLabels) c.data.labels = newLabels;
-  c.data.datasets[0].data = newData;
-  c.update('none');
-}
-
-// ── Formatters ────────────────────────────────────────────────────────────
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function gaugeClass(pct) { return pct >= 90 ? "fill-danger" : pct >= 70 ? "fill-warn" : "fill-green"; }
 function fmtUptime(s) {
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.floor(s/60)}m ${Math.floor(s%60)}s`;
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return `${h}h ${m}m`;
-}
-function fmtTime(ts) {
-  return new Date(ts * 1000).toLocaleTimeString();
-}
-function pct(v) { return typeof v === 'number' ? v.toFixed(1) + '%' : '—'; }
-function gb(v)  { return typeof v === 'number' ? v.toFixed(1) + ' GB' : '—'; }
-
-// ── Render helpers ────────────────────────────────────────────────────────
-function setBar(barId, value, warnAt = 80, dangerAt = 95) {
-  const el = document.getElementById(barId);
-  if (!el) return;
-  el.style.width = Math.min(value, 100) + '%';
-  el.className = 'progress-fill' + (value >= dangerAt ? ' danger' : value >= warnAt ? ' warn' : '');
+  const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function statusBadge(status) {
-  const map = { healthy: 'ok', warning: 'warn', offline: 'error', loaded: 'ok', not_loaded: 'warn', error: 'error', disabled: 'info', unknown: 'info' };
-  return `<span class="badge badge-${map[status] || 'info'}">${status}</span>`;
-}
-
-// ── Render overview ────────────────────────────────────────────────────────
-function renderOverview(req, mod) {
-  const total = req.total || 0, ok = req.successful || 0, fail = req.failed || 0;
-  document.getElementById('ov-total').textContent = total.toLocaleString();
-  const rate = total > 0 ? ((ok/total)*100).toFixed(1) + '%' : '—';
-  document.getElementById('ov-success-rate').textContent = rate;
-  document.getElementById('ov-ok-fail').textContent = `${ok} ok / ${fail} failed`;
-  document.getElementById('ov-avg-rt').textContent = req.avg_response_time_s?.toFixed(3) ?? '—';
-  document.getElementById('ov-rps').textContent = req.requests_per_second?.toFixed(2) ?? '—';
-
-  const dec = mod.decisions || {};
-  const decLabels = Object.keys(dec);
-  const decData   = Object.values(dec);
-  if (decLabels.length) initDoughnut('decisionsChart', decLabels, decData);
-
-  const cats = mod.category_flags || {};
-  const catEntries = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  if (catEntries.length) {
-    initBar('categoryOverviewChart', catEntries.map(e => e[0]), catEntries.map(e => e[1]));
+/* ── Fetch all monitoring data ───────────────────────────────────────────── */
+async function refresh() {
+  const bar = $("refreshBar");
+  bar.style.width = "30%";
+  try {
+    const resp = await fetch("/api/v1/monitor/all");
+    if (!resp.ok) throw new Error("API error");
+    const d = await resp.json();
+    bar.style.width = "70%";
+    renderAll(d);
+    bar.style.width = "100%";
+    setTimeout(() => { bar.style.width = "0%"; }, 500);
+  } catch {
+    bar.style.width = "0%";
+    $("uptimePill").innerHTML = `<span class="pill-dot" style="background:var(--danger)"></span> Offline`;
   }
 }
 
-// ── Render health ─────────────────────────────────────────────────────────
-function renderHealth(health) {
-  const grid = document.getElementById('healthGrid');
-  grid.innerHTML = Object.values(health).map(c =>
-    `<div class="health-card ${c.status}">
-      <span class="health-icon">${c.icon}</span>
-      <div><div class="health-label">${c.label}</div><div class="health-status">${c.status}</div></div>
-    </div>`
-  ).join('');
-}
+function renderAll(d) {
+  const sys = d.system || {};
+  const req = d.requests || {};
+  const mod = d.moderation || {};
+  const models = d.models || {};
+  const perf = d.performance || {};
+  const health = d.health || {};
 
-// ── Render system ─────────────────────────────────────────────────────────
-function renderSystem(sys) {
-  document.getElementById('sys-uptime').textContent = fmtUptime(sys.uptime_seconds || 0);
-  document.getElementById('sys-threads').textContent = (sys.active_threads || 0) + ' threads';
+  /* Uptime */
+  $("uptimePill").innerHTML = `<span class="pill-dot"></span> ${fmtUptime(sys.uptime_seconds || 0)} uptime`;
 
-  const cpu = sys.cpu_percent;
-  document.getElementById('sys-cpu').textContent = cpu != null ? cpu.toFixed(1) + '%' : 'N/A';
-  document.getElementById('sys-cpu-pct').textContent = cpu != null ? pct(cpu) : '—';
-  if (cpu != null) setBar('sys-cpu-bar', cpu);
+  /* System resources */
+  const cpu = sys.cpu_percent || 0;
+  $("cpuCard").querySelector(".stat-value").textContent = `${cpu}%`;
+  $("cpuGauge").style.width = cpu + "%";
+  $("cpuGauge").className = `gauge-fill ${gaugeClass(cpu)}`;
 
-  const mem = sys.memory;
-  if (mem) {
-    document.getElementById('sys-mem').textContent = mem.used_gb.toFixed(1) + ' / ' + mem.total_gb.toFixed(1) + ' GB';
-    document.getElementById('sys-mem-pct').textContent = pct(mem.percent);
-    setBar('sys-mem-bar', mem.percent);
+  const mem = sys.memory || {};
+  const memPct = mem.percent || 0;
+  $("memCard").querySelector(".stat-value").textContent = `${memPct}%`;
+  $("memCard").querySelector(".stat-sub")?.remove();
+  $("memCard").insertAdjacentHTML("beforeend", `<span class="stat-sub">${mem.used_gb || 0} / ${mem.total_gb || 0} GB</span>`);
+  $("memGauge").style.width = memPct + "%";
+  $("memGauge").className = `gauge-fill ${gaugeClass(memPct)}`;
+
+  const disk = sys.disk || {};
+  const diskPct = disk.percent || 0;
+  $("diskCard").querySelector(".stat-value").textContent = `${diskPct}%`;
+  $("diskGauge").style.width = diskPct + "%";
+  $("diskGauge").className = `gauge-fill ${gaugeClass(diskPct)}`;
+
+  if (sys.gpu && sys.gpu.length) {
+    const g = sys.gpu[0];
+    const gpuPct = g.utilization_percent || 0;
+    $("gpuCard").querySelector(".stat-value").textContent = `${gpuPct}%`;
+    $("gpuCard").querySelector(".stat-label").textContent = g.name || "GPU";
+    $("gpuGauge").style.width = gpuPct + "%";
+    $("gpuGauge").className = `gauge-fill ${gaugeClass(gpuPct)}`;
   }
 
-  const disk = sys.disk;
-  if (disk) {
-    document.getElementById('sys-disk').textContent = disk.used_gb.toFixed(1) + ' / ' + disk.total_gb.toFixed(1) + ' GB';
-    document.getElementById('sys-disk-pct').textContent = pct(disk.percent);
-    setBar('sys-disk-bar', disk.percent);
-  }
+  /* Health grid */
+  const healthHTML = Object.entries(health).map(([k, v]) => {
+    const st = v.status || "warning";
+    return `<div class="health-row"><span class="health-dot dot-${st}"></span><span style="flex:1;">${esc(v.label || k)}</span><span style="font-size:11px;color:var(--muted);text-transform:uppercase;">${st}</span></div>`;
+  }).join("");
+  $("healthGrid").innerHTML = healthHTML || '<div class="health-row">No data</div>';
 
-  // Process info table
-  const procRows = [
-    ['Process Memory', sys.process_memory_mb != null ? sys.process_memory_mb + ' MB' : '—'],
-    ['Python Version', sys.python_version || '—'],
-    ['Platform', sys.platform || '—'],
-    ['Active Threads', sys.active_threads || '—'],
-    ['Uptime', fmtUptime(sys.uptime_seconds || 0)],
-  ];
-  document.getElementById('sysProcessTable').innerHTML = procRows.map(
-    ([k, v]) => `<tr><td style="color:var(--muted)">${k}</td><td><strong>${v}</strong></td></tr>`
-  ).join('');
+  /* Model list */
+  const modelStatus = models.model_status || {};
+  const modelHTML = Object.entries(modelStatus).map(([name, status]) => {
+    let bc = "badge-not-loaded";
+    if (status === "loaded") bc = "badge-loaded";
+    else if (status === "disabled") bc = "badge-disabled";
+    else if (status === "error") bc = "badge-error";
+    return `<div class="model-row"><span style="font-weight:700;">${esc(name)}</span><span class="model-badge ${bc}">${esc(status)}</span></div>`;
+  }).join("");
+  $("modelList").innerHTML = modelHTML || '<div class="model-row">No models loaded</div>';
 
-  // Network table
-  const net = sys.network;
-  const netRows = net ? [
-    ['Bytes Sent', net.bytes_sent_mb + ' MB'],
-    ['Bytes Received', net.bytes_recv_mb + ' MB'],
-    ['Packets Sent', net.packets_sent?.toLocaleString()],
-    ['Packets Received', net.packets_recv?.toLocaleString()],
-  ] : [['Network', 'N/A']];
-  document.getElementById('sysNetTable').innerHTML = netRows.map(
-    ([k, v]) => `<tr><td style="color:var(--muted)">${k}</td><td><strong>${v}</strong></td></tr>`
-  ).join('');
+  /* Request analytics */
+  $("reqTotal").textContent = req.total || 0;
+  $("reqOk").textContent = req.successful || 0;
+  $("reqFail").textContent = req.failed || 0;
+  $("reqAvg").textContent = `${(req.avg_response_time_s || 0).toFixed(2)}s`;
 
-  // GPU
-  const gpus = sys.gpu;
-  const gpuContent = document.getElementById('gpuContent');
-  if (gpus && gpus.length) {
-    gpuContent.innerHTML = `<div class="grid-3">${gpus.map(g => `
-      <div style="border:1px solid var(--line);border-radius:8px;padding:16px">
-        <div style="font-weight:700;margin-bottom:8px">GPU ${g.index}: ${g.name}</div>
-        <div class="progress-wrap">
-          <div class="progress-label"><span>VRAM</span><span>${g.allocated_gb.toFixed(1)} / ${g.total_gb.toFixed(1)} GB</span></div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${g.utilization_percent}%"></div></div>
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:8px">
-          Reserved: ${g.reserved_gb.toFixed(1)} GB &nbsp;·&nbsp; ${g.utilization_percent}% utilization
-        </div>
-      </div>`).join('')}</div>`;
+  /* History chart */
+  const hist = req.history_10s_buckets || [];
+  const maxH = Math.max(1, ...hist);
+  const chartHTML = hist.slice(-20).map((v, i) => {
+    const h = Math.max(2, (v / maxH) * 70);
+    return `<div class="bar-col"><div class="bar" style="height:${h}px;"></div></div>`;
+  }).join("");
+  $("historyChart").innerHTML = chartHTML || '<span style="color:var(--muted);font-size:12px;">No data yet</span>';
+
+  /* Content types */
+  const ct = req.by_content_type || {};
+  $("ctImage").textContent = ct.image || 0;
+  $("ctVideo").textContent = ct.video || 0;
+  $("ctText").textContent = ct.text || 0;
+  $("ctPdf").textContent = ct.pdf || 0;
+  $("ctDocx").textContent = ct.docx || 0;
+
+  /* Performance */
+  $("perfE2e").textContent = `${(perf.avg_e2e_latency_s || 0).toFixed(3)}s`;
+  $("perfOcr").textContent = `${(perf.avg_ocr_time_s || 0).toFixed(3)}s`;
+  $("perfVision").textContent = `${(perf.avg_vision_time_s || 0).toFixed(3)}s`;
+  $("perfNlp").textContent = `${(perf.avg_nlp_time_s || 0).toFixed(3)}s`;
+  $("perfThroughput").textContent = `${(perf.throughput_per_minute || 0).toFixed(1)}/min`;
+
+  /* Category flags */
+  const catFlags = mod.category_flags || {};
+  const flagEntries = Object.entries(catFlags).sort((a, b) => b[1] - a[1]);
+  if (flagEntries.length) {
+    $("catFlags").innerHTML = flagEntries.map(([cat, count]) =>
+      `<div class="cat-stat"><span>${esc(cat.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()))}</span><span class="cat-count">${count}</span></div>`
+    ).join("");
   } else {
-    gpuContent.innerHTML = '<div class="empty">No GPU detected or CUDA unavailable</div>';
+    $("catFlags").innerHTML = '<span style="color:var(--muted);font-size:13px;">No flags yet</span>';
   }
 }
 
-// ── Render models ─────────────────────────────────────────────────────────
-function renderModels(models) {
-  const status = models.model_status || {};
-  const loadTimes = models.load_times || {};
-  document.getElementById('modelStatusTable').innerHTML = Object.keys(status).length
-    ? Object.entries(status).map(([name, s]) =>
-        `<tr>
-          <td><code>${name}</code></td>
-          <td>${statusBadge(s)}</td>
-          <td>${loadTimes[name] != null ? loadTimes[name].toFixed(2) + 's' : '—'}</td>
-        </tr>`
-      ).join('')
-    : '<tr><td colspan="3" class="empty">No model status available</td></tr>';
-
-  const breakdown = models.inference_breakdown || [];
-  document.getElementById('inferenceTable').innerHTML = breakdown.length
-    ? breakdown.map(m =>
-        `<tr>
-          <td><code>${m.name}</code></td>
-          <td>${m.avg_inference_ms}</td>
-          <td>${m.min_ms}</td>
-          <td>${m.max_ms}</td>
-          <td>${m.total_inferences}</td>
-        </tr>`
-      ).join('')
-    : '<tr><td colspan="5" class="empty">No inference data yet — process some requests first</td></tr>';
-
-  if (breakdown.length) {
-    initBar('inferenceChart', breakdown.map(m => m.name), breakdown.map(m => m.avg_inference_ms));
-  }
-}
-
-// ── Render analytics ──────────────────────────────────────────────────────
-function renderAnalytics(req, mod) {
-  const ct = mod.by_content_type || {};
-  document.getElementById('mod-images').textContent = ct.images || 0;
-  document.getElementById('mod-videos').textContent = ct.videos || 0;
-  document.getElementById('mod-pdfs').textContent   = ct.pdfs || 0;
-  document.getElementById('mod-docx').textContent   = ct.docx || 0;
-  document.getElementById('mod-text').textContent   = ct.text || 0;
-
-  // Content type chart
-  const ctLabels = ['Images','Videos','PDFs','DOCX','Text'];
-  const ctData   = [ct.images||0, ct.videos||0, ct.pdfs||0, ct.docx||0, ct.text||0];
-  if (ctData.some(v=>v>0)) initDoughnut('contentTypeChart', ctLabels, ctData);
-
-  // Request history line chart
-  const buckets = req.history_10s_buckets || new Array(60).fill(0);
-  const labels = buckets.map((_, i) => {
-    const ago = (60 - i) * 10;
-    return ago >= 60 ? `${Math.floor(ago/60)}m` : `${ago}s`;
-  });
-  initLine('requestHistoryChart', labels, [{ label: 'Requests', data: buckets }]);
-
-  // Category chart
-  const cats = mod.category_flags || {};
-  const catEntries = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 12);
-  if (catEntries.length) {
-    initBar('categoryChart', catEntries.map(e => e[0]), catEntries.map(e => e[1]), true);
-  }
-
-  // Slowest requests
-  const slowest = req.slowest_requests || [];
-  document.getElementById('slowestTable').innerHTML = slowest.length
-    ? slowest.map(r =>
-        `<tr>
-          <td><code>${r.endpoint}</code></td>
-          <td>${r.duration_s}s</td>
-          <td>${statusBadge(r.decision || 'unknown')}</td>
-          <td>${fmtTime(r.ts)}</td>
-        </tr>`
-      ).join('')
-    : '<tr><td colspan="4" class="empty">No requests recorded yet</td></tr>';
-}
-
-// ── Render performance ────────────────────────────────────────────────────
-function renderPerformance(perf) {
-  document.getElementById('perf-e2e').textContent    = perf.avg_e2e_latency_s?.toFixed(3) ?? '—';
-  document.getElementById('perf-ocr').textContent    = perf.avg_ocr_time_s?.toFixed(3) ?? '—';
-  document.getElementById('perf-vision').textContent = perf.avg_vision_time_s?.toFixed(3) ?? '—';
-  document.getElementById('perf-nlp').textContent    = perf.avg_nlp_time_s?.toFixed(3) ?? '—';
-  document.getElementById('perf-throughput').textContent = perf.throughput_per_minute?.toFixed(1) ?? '—';
-
-  const breakdown = perf.inference_by_model || {};
-  document.getElementById('perfBreakdownTable').innerHTML = Object.keys(breakdown).length
-    ? Object.entries(breakdown).map(([k, v]) =>
-        `<tr><td><code>${k}</code></td><td>${v.toFixed(3)}s</td></tr>`
-      ).join('')
-    : '<tr><td colspan="2" class="empty">No data yet</td></tr>';
-}
-
-// ── Fetch and render logs ─────────────────────────────────────────────────
-async function fetchLogs() {
-  const level  = document.getElementById('logLevel').value;
-  const search = document.getElementById('logSearch').value;
-  const params = new URLSearchParams({ limit: 300 });
-  if (level)  params.set('level', level);
-  if (search) params.set('search', search);
-  try {
-    const r = await fetch(`${API}/logs?${params}`);
-    const data = await r.json();
-    const logs = data.logs || [];
-    document.getElementById('logCount').textContent = `${logs.length} lines`;
-    const box = document.getElementById('logBox');
-    if (!logs.length) {
-      box.innerHTML = '<div style="color:#64748b">No logs match the current filter.</div>';
-      return;
-    }
-    box.innerHTML = logs.map(l => {
-      const ts = new Date(l.ts * 1000).toISOString().replace('T', ' ').slice(0, 19);
-      const msg = l.message.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return `<div class="log-line"><span class="ts">${ts}</span><span class="lvl ${l.level}">${l.level}</span>${msg}</div>`;
-    }).join('');
-    box.scrollTop = box.scrollHeight;
-  } catch (e) {
-    document.getElementById('logBox').innerHTML = '<div style="color:#f87171">Failed to load logs.</div>';
-  }
-}
-
-function downloadLogs() {
-  const level  = document.getElementById('logLevel').value;
-  const search = document.getElementById('logSearch').value;
-  const params = new URLSearchParams({ limit: 1000 });
-  if (level) params.set('level', level);
-  if (search) params.set('search', search);
-  const a = document.createElement('a');
-  a.href = `/api/v1/monitor/logs?${params}`;
-  a.download = 'aegis_logs.json';
-  a.click();
-  toast('Downloading logs…');
-}
-
-// ── Render security ───────────────────────────────────────────────────────
-function renderSecurity(security, errors) {
-  document.getElementById('sec-total').textContent = security.total || 0;
-  document.getElementById('err-total').textContent = errors.total || 0;
-
-  const byType = security.by_type || {};
-  document.getElementById('sec-blocked-files').textContent = byType.blocked_file_type || 0;
-  document.getElementById('sec-oversized').textContent     = byType.oversized_upload || 0;
-
-  document.getElementById('secTypeTable').innerHTML = Object.keys(byType).length
-    ? Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(
-        ([k, v]) => `<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`
-      ).join('')
-    : '<tr><td colspan="2" class="empty">No events</td></tr>';
-
-  const errByType = errors.by_type || {};
-  document.getElementById('errTypeTable').innerHTML = Object.keys(errByType).length
-    ? Object.entries(errByType).sort((a,b)=>b[1]-a[1]).map(
-        ([k, v]) => `<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`
-      ).join('')
-    : '<tr><td colspan="2" class="empty">No errors</td></tr>';
-
-  const secRecent = (security.recent || []).slice(0, 20);
-  document.getElementById('secRecentTable').innerHTML = secRecent.length
-    ? secRecent.map(e =>
-        `<tr>
-          <td>${fmtTime(e.ts)}</td>
-          <td><span class="badge badge-warn">${e.event_type}</span></td>
-          <td style="max-width:400px;word-break:break-all">${e.detail}</td>
-        </tr>`
-      ).join('')
-    : '<tr><td colspan="3" class="empty">No security events</td></tr>';
-
-  const errRecent = (errors.recent || []).slice(0, 20);
-  document.getElementById('errRecentTable').innerHTML = errRecent.length
-    ? errRecent.map(e =>
-        `<tr>
-          <td>${fmtTime(e.ts)}</td>
-          <td><code>${e.endpoint}</code></td>
-          <td><span class="badge badge-error">${e.error_type}</span></td>
-          <td style="max-width:340px;word-break:break-all">${e.detail}</td>
-        </tr>`
-      ).join('')
-    : '<tr><td colspan="4" class="empty">No errors</td></tr>';
-}
-
-// ── Master fetch ──────────────────────────────────────────────────────────
-async function fetchAll() {
-  try {
-    const res = await fetch(`${API}/all`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    allData = await res.json();
-
-    renderHealth(allData.health || {});
-    renderOverview(allData.requests || {}, allData.moderation || {});
-    renderSystem(allData.system || {});
-    renderModels(allData.models || {});
-    renderAnalytics(allData.requests || {}, allData.moderation || {});
-    renderPerformance(allData.performance || {});
-    renderSecurity(allData.security || {}, allData.errors || {});
-
-    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-  } catch (e) {
-    document.getElementById('lastUpdated').textContent = 'Error — retrying…';
-    console.error('fetchAll error:', e);
-  }
-}
-
-// ── Bootstrap ─────────────────────────────────────────────────────────────
-fetchAll();
-startRefresh();
+/* ── Auto-refresh ────────────────────────────────────────────────────────── */
+refresh();
+refreshTimer = setInterval(refresh, REFRESH_MS);
 </script>
 </body>
 </html>

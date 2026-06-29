@@ -1,7 +1,7 @@
 # Aegis Moderation
 
-[![Tests](https://github.com/your-org/aegis-moderation/actions/workflows/tests.yml/badge.svg)](https://github.com/your-org/aegis-moderation/actions/workflows/tests.yml)
-[![Docker Build](https://github.com/your-org/aegis-moderation/actions/workflows/docker.yml/badge.svg)](https://github.com/your-org/aegis-moderation/actions/workflows/docker.yml)
+[![Tests](https://github.com/nkhlxdhmn/-Aegis-Moderation-Service/actions/workflows/tests.yml/badge.svg)](https://github.com/nkhlxdhmn/-Aegis-Moderation-Service/actions/workflows/tests.yml)
+[![Docker Build](https://github.com/nkhlxdhmn/-Aegis-Moderation-Service/actions/workflows/docker.yml/badge.svg)](https://github.com/nkhlxdhmn/-Aegis-Moderation-Service/actions/workflows/docker.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -29,25 +29,29 @@ Analyze images, videos, text, PDFs, and DOCX files with a full pipeline of local
 
 ## Quick Start
 
-### Docker (GPU — recommended for production)
+### Docker (CPU — default, no GPU required)
 
 ```bash
 docker compose up --build
 ```
 
-### Docker (CPU — local dev, no GPU required)
+### Docker (GPU — recommended for production)
+
+Requires the NVIDIA Container Toolkit.
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.gpu.yml up --build
 ```
 
-The dashboard opens at **http://localhost:8000** automatically.
+The moderation dashboard opens at **http://localhost:8000** automatically.
+The monitoring dashboard opens at **http://localhost:8000/dashboard**.
 
 ### Local Python
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+# source .venv/bin/activate        # Linux/macOS
+# .venv\Scripts\activate           # Windows
 pip install -r requirements.txt
 
 # Pre-download all model weights (also happens lazily on first request)
@@ -70,7 +74,7 @@ Full interactive docs at **http://localhost:8000/api/docs** (Swagger UI).
 | `POST` | `/api/v1/moderate/pdf` | Upload file or pass `document_url` form field |
 | `POST` | `/api/v1/moderate/docx` | Upload file or pass `document_url` form field |
 | `GET`  | `/api/v1/health` | Service liveness |
-| `GET`  | `/api/v1/model-health` | Model readiness status |
+| `GET`  | `/api/v1/monitor/all` | Live monitoring dashboard data |
 | `GET`  | `/api/v1/metrics` | Prometheus metrics |
 
 ### Example — image URL
@@ -86,25 +90,6 @@ curl -X POST http://localhost:8000/api/v1/moderate/image \
 curl -X POST http://localhost:8000/api/v1/moderate/text \
   -H "Content-Type: application/json" \
   -d '{"text": "Hello world"}'
-```
-
-### Response schema (condensed)
-
-```json
-{
-  "overall_score": 4.2,
-  "risk_level": "SAFE",
-  "decision": "Accept",
-  "recommendation": "Allow",
-  "categories": {
-    "adult_content": 0.0,
-    "violence": 0.0,
-    "hate_speech": 0.0
-  },
-  "objects": ["person", "car"],
-  "ocr_text": "",
-  "content_type": "image"
-}
 ```
 
 ---
@@ -133,32 +118,18 @@ See [docs/Configuration.md](docs/Configuration.md) for the full list.
 ```
 backend/
   main.py               FastAPI app + REST endpoints
-  image_io.py           Image upload + SSRF-safe URL download
-  documents.py          PDF and DOCX ingestion
-  reports.py            Report normalisation + decision engine
+  monitoring_routes.py  Monitoring & observability endpoints
   model_warmup.py       Eagerly pre-load model weights
   validate_models.py    Pre-flight model validation checklist
-  pipeline/
-    safety_flags.py     Image pipeline orchestration (11 stages)
-    text_moderation.py  Text moderation pipeline
-    video_moderation.py Video frame + transcript pipeline
-    nsfw.py             NSFW / explicit classifier
-    clip_engine.py      SigLIP2 vision embeddings
-    object_detector.py  YOLO11x object detection
-    ocr.py              Hybrid OCR (Surya + EasyOCR)
-    vlm_engine.py       BLIP image captioning
-    decision_engine.py  Rule-based decision tree
-    ...
+  pipeline/             35+ modules for 11-stage content analysis
 frontend/
-  index.html            Standalone browser dashboard (no build step)
+  index.html            Standalone premium moderation dashboard
+  dashboard.html        Monitoring & observability dashboard
 scripts/
   setup_models.py       Download all model weights
   warmup.py             Pre-warm models before accepting traffic
   benchmark.py          Latency benchmarking
-tests/
-  test_main.py          FastAPI endpoint tests
-  test_standalone_report.py  Report normalisation tests
-  ...
+docs/                   Architecture, API, and Deployment guides
 ```
 
 ---
@@ -181,20 +152,14 @@ See [SECURITY.md](SECURITY.md) for the responsible disclosure policy.
 
 ```bash
 # Run core tests (no GPU or model downloads required)
-python -m pytest tests/test_main.py tests/test_standalone_report.py -v
+make test
 
-# Lint
-ruff check .
-black --check .
-
-# Format
-black .
+# Lint & Format
+make lint
+make format
 
 # Validate models after install
 python backend/validate_models.py --skip-warmup
-
-# Benchmark OCR + end-to-end latency
-python scripts/benchmark.py --image path/to/image.jpg --ocr-only
 ```
 
 ---

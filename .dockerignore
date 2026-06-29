@@ -1,5 +1,7 @@
 .git/
 .github/
+.claude/
+.gemini/
 .env
 .env.*
 !.env.example
@@ -33,10 +35,5 @@ hf_cache/
 huggingface/
 surya-ocr-main/
 postman/
-demo/
-docs/
-tests/
 frontend/node_modules/
 frontend/dist/
-frontend/package*.json
-frontend/src/

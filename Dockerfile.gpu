@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1.7
+# ── Aegis Moderation — GPU Dockerfile ──────────────────────────────────────
+# Requires NVIDIA Container Toolkit and a CUDA-capable GPU.
+# Usage:  docker compose -f docker-compose.gpu.yml up --build
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HOME=/home/aegis/.cache/huggingface \
+    TRANSFORMERS_CACHE=/home/aegis/.cache/huggingface \
+    YOLO_CONFIG_DIR=/home/aegis/.config/ultralytics
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-distutils \
+    python3-pip \
+    curl \
+    ca-certificates \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    ffmpeg \
+    libzbar0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+    && useradd --create-home --shell /usr/sbin/nologin aegis
+
+COPY requirements.txt constraints.txt ./
+
+# Step 1: Upgrade pip
+RUN python -m pip install --upgrade pip wheel setuptools
+
+# Step 2: Install PyTorch + CUDA (large downloads, cached as separate layer)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --default-timeout=1000 --retries=10 \
+    torch==2.5.1+cu124 torchvision==0.20.1+cu124 \
+    --index-url https://download.pytorch.org/whl/cu124
+
+# Step 3: Install heavy ML packages (cached as separate layer)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --default-timeout=1000 --retries=10 \
+    -c constraints.txt \
+    "transformers>=4.49,<5.0" "accelerate>=0.34,<1.0" \
+    "ultralytics>=8.3,<9.0" "easyocr>=1.7,<2.0" "surya-ocr>=0.4,<1.0" \
+    "detoxify>=0.3,<1.0" "presidio-analyzer>=2.2,<3.0"
+
+# Step 4: Install remaining (lighter) requirements
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --default-timeout=1000 --retries=10 \
+    -c constraints.txt \
+    -r requirements.txt
+
+COPY --chown=aegis:aegis frontend/ ./frontend/
+COPY --chown=aegis:aegis backend/ ./backend/
+COPY --chown=aegis:aegis scripts/ ./scripts/
+
+RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \
+    && chown -R aegis:aegis /home/aegis /app
+
+USER aegis
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

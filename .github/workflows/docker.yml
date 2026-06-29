@@ -6,15 +6,15 @@ on:
   pull_request:
 
 jobs:
-  build-dev:
+  build-cpu:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build development image (CPU, no GPU required)
-        run: docker build -f Dockerfile.dev -t aegis-moderation-dev:ci .
+      - name: Build default image (CPU, no GPU required)
+        run: docker build -t aegis-moderation:ci .
       - name: Smoke-test health endpoint
         run: |
-          docker run -d --name aegis-ci -p 8000:8000 aegis-moderation-dev:ci
+          docker run -d --name aegis-ci -p 8000:8000 aegis-moderation:ci
           for i in $(seq 1 15); do
             sleep 2
             if curl -sf http://localhost:8000/api/v1/health; then echo "OK"; exit 0; fi

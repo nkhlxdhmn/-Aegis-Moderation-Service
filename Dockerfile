@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.7
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS runtime
+# ── Aegis Moderation — CPU Dockerfile (default) ───────────────────────────
+# No GPU required. Works on Windows (Docker Desktop + WSL2), Linux, macOS.
+# Usage:  docker compose up --build
+FROM python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -11,9 +14,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 \
-    python3.11-distutils \
-    python3-pip \
     curl \
     ca-certificates \
     build-essential \
@@ -23,17 +23,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libzbar0 \
     && rm -rf /var/lib/apt/lists/* \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
     && useradd --create-home --shell /usr/sbin/nologin aegis
 
-COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip install --upgrade pip wheel setuptools \
-    && python -m pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 --index-url https://download.pytorch.org/whl/cu124 \
-    && python -m pip install -r requirements.txt
+COPY requirements.txt ./
 
-COPY --chown=aegis:aegis frontend/index.html ./frontend/index.html
-COPY --chown=aegis:aegis backend ./backend
+# Step 1: Upgrade pip
+RUN python -m pip install --upgrade pip wheel setuptools
+
+# Step 2: Install CPU-only PyTorch (much smaller than CUDA variant)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --default-timeout=300 --retries=5 \
+    torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Step 3: Install all remaining requirements
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --default-timeout=300 --retries=5 \
+    -r requirements.txt
+
+COPY --chown=aegis:aegis frontend/ ./frontend/
+COPY --chown=aegis:aegis backend/ ./backend/
+COPY --chown=aegis:aegis scripts/ ./scripts/
 
 RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \
     && chown -R aegis:aegis /home/aegis /app
@@ -41,7 +50,7 @@ RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \
 USER aegis
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
 CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

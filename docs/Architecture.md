@@ -1,60 +1,48 @@
 # Architecture
 
-Aegis Moderation v1.0.0 is a standalone multimodal moderation platform. It does not require a database, Redis, worker queue, or API key.
+Aegis Moderation uses a standalone, stateless architecture designed for in-process machine learning inference without the complexity of microservices or external databases.
 
-```text
-Client Browser
-  |
-  v
-FastAPI API
-  |
-  v
-Validation
-  |
-  v
-OCR / Text Classifier / Vision Models / Document Parsers
-  |
-  v
-Rule Engine
-  |
-  v
-JSON Moderation Report
-```
+## 1. Request Flow
 
-## Runtime Structure
+1. **Ingestion**: Fastapi receives the payload (`multipart/form-data` or JSON).
+2. **Validation**: `image_io.py` or `documents.py` validates limits (size, pixels, SSRF checks) and writes content to a temporary OS file.
+3. **Orchestration**: The request is routed to the specific pipeline (`safety_flags.py` for images, `text_moderation.py` for text, etc.).
+4. **Inference**: Content passes through a series of loaded PyTorch/Transformers models.
+5. **Decision**: Raw model scores are aggregated by `reports.py` into a final `risk_level` and `decision`.
+6. **Cleanup**: Temporary files are deleted.
 
-- `frontend/`: React browser dashboard served by FastAPI.
-- `backend/`: FastAPI entrypoint, ingestion helpers, document parsers, and report builders.
-- `backend/pipeline/`: OCR, vision, text safety, object detection, and rule signals.
-- `backend/models/registry.py`: model identifiers and extension points. Model weights are never committed.
-- `scripts/benchmark.py`: local OCR and end-to-end benchmark runner.
-- `monitoring/prometheus.yml`: Prometheus scrape example for `/metrics`.
+## 2. Models Used
 
-## Data Flow
+| Component | Model | Purpose |
+|---|---|---|
+| **Vision (NSFW)** | `Falconsai/nsfw_image_detection` | Detect explicit/suggestive content |
+| **Object Detection** | `YOLO11x` (Ultralytics) | Detect weapons, drugs, gore |
+| **Vision Embeddings** | `google/siglip2-large-patch16-384` | Zero-shot safety classification |
+| **OCR** | `Surya` + `EasyOCR` | Extract text from images |
+| **Image Captioning** | `Salesforce/blip-image-captioning-large` | Provide visual context for text models |
+| **Text Moderation** | `Detoxify` (Multilingual) | Detect toxicity, insults, identity hate |
+| **Language ID** | `FastText` | Detect content language |
+| **Audio** | `Whisper` | Video transcription |
 
-1. A user submits an image, video, text, PDF, or DOCX file from the React UI.
-2. The backend validates content type, size, URL network safety, and document safety limits.
-3. The relevant pipeline extracts OCR text, document text, object detections, text risks, and vision risks.
-4. `backend.reports` normalizes the signals into the public category taxonomy.
-5. The decision engine returns `SAFE`, `LOW RISK`, `MEDIUM RISK`, `HIGH RISK`, or `CRITICAL` plus a recommendation.
+## 3. The 11-Stage Image Pipeline
 
-## Document Flow
+1. Validation & Input Normalization
+2. Hash Caching (In-memory FAISS similarity)
+3. NSFW & Gore Classification
+4. Object Detection (YOLO)
+5. SigLIP Zero-Shot Safety
+6. OCR & Text Extraction
+7. BLIP Image Captioning
+8. Text Moderation (on OCR & Captions)
+9. PII & Document Detection
+10. Rule Engine Aggregation
+11. Uncertainty Estimation
 
-```text
-PDF/DOCX
-  |
-  v
-Validate File or URL
-  |
-  v
-Extract Metadata and Text
-  |
-  v
-Detect Links, Embedded Images, PII, Spam, Scam, and Toxic Text
-  |
-  v
-Rule Engine
-  |
-  v
-Document Moderation Report
-```
+## 4. State & Monitoring
+
+The application uses an in-process singleton (`AegisMonitor`) in `backend/monitor.py`. This tracks:
+- System resources (CPU, Memory, Disk, GPU) via `psutil` / `pynvml`
+- Ring-buffers (last 1000) for requests, errors, and latency
+- 10-second history buckets for throughput graphing
+
+No external database (like PostgreSQL or Redis) is required.
