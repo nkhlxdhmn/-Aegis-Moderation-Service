@@ -2,7 +2,7 @@
 # ── Aegis Moderation — CPU Dockerfile (default) ───────────────────────────
 # No GPU required. Works on Windows (Docker Desktop + WSL2), Linux, macOS.
 # Usage:  docker compose up --build
-FROM python:3.11-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
