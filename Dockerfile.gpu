@@ -2,7 +2,7 @@
 # ── Aegis Moderation — GPU Dockerfile ──────────────────────────────────────
 # Requires NVIDIA Container Toolkit and a CUDA-capable GPU.
 # Usage:  docker compose -f docker-compose.gpu.yml up --build
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu22.04 AS runtime
+FROM nvidia/cuda:13.3.0-cudnn-runtime-ubuntu22.04 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
