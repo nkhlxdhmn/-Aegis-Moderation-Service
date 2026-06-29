@@ -1,12 +1,871 @@
-﻿<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aegis Moderation</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis Moderation</title>
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────────── */
+    :root {
+      --bg:           #f5f7f8;
+      --panel:        rgba(255,255,255,0.96);
+      --ink:          #16201d;
+      --muted:        #60716b;
+      --line:         #d9e1de;
+      --accent:       #0f766e;
+      --accent-s:     #115e59;
+      --accent-l:     #e7f3f1;
+      --warn:         #b45309;
+      --warn-l:       #fff8eb;
+      --danger:       #b91c1c;
+      --danger-l:     #fee2e2;
+      --soft:         #edf3f1;
+      --ocr-bg:       #101816;
+      --ocr-fg:       #e9f4f1;
+      --shadow:       0 18px 60px rgba(18,32,29,.12);
+      --radius:       8px;
+      --font:         Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                      "Segoe UI", sans-serif;
+    }
+    [data-theme="dark"] {
+      --bg:           #0f1614;
+      --panel:        rgba(22,35,30,0.97);
+      --ink:          #e9f4f1;
+      --muted:        #8fa89e;
+      --line:         #2a3d36;
+      --accent:       #2dd4bf;
+      --accent-s:     #5eead4;
+      --accent-l:     #162420;
+      --warn:         #fbbf24;
+      --warn-l:       #1c160a;
+      --danger:       #f87171;
+      --danger-l:     #1a0707;
+      --soft:         #162420;
+      --ocr-bg:       #060d0b;
+      --ocr-fg:       #cde8e0;
+      --shadow:       0 18px 60px rgba(0,0,0,.4);
+    }
+
+    /* ── Reset & base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 0%, rgba(15,118,110,.12), transparent 30%), var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.5;
+      transition: background .2s, color .2s;
+    }
+    button { font: inherit; cursor: pointer; }
+    input, textarea { font: inherit; color: var(--ink); }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .shell { width: min(1220px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0; }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    .hero {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 24px; padding: 10px 0 26px; flex-wrap: wrap;
+    }
+    .eyebrow { color: var(--muted); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    h1 {
+      margin: 6px 0 8px;
+      font-size: clamp(2.2rem, 5vw, 4.8rem);
+      line-height: .95; letter-spacing: -.01em;
+    }
+    .subhead { color: var(--muted); font-size: 18px; max-width: 760px; }
+    .hero-right { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+    .status-pill {
+      border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px;
+      background: var(--panel); color: var(--accent-s); font-weight: 800; font-size: 13px;
+    }
+    #darkToggle {
+      border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px;
+      background: var(--panel); color: var(--muted); font-weight: 800; font-size: 13px;
+    }
+    #darkToggle:hover { color: var(--ink); }
+
+    /* ── Workspace grid ────────────────────────────────────────────────── */
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(300px, 420px) 1fr;
+      gap: 20px; align-items: start;
+    }
+    @media (max-width: 780px) { .workspace { grid-template-columns: 1fr; } }
+
+    /* ── Card panel ────────────────────────────────────────────────────── */
+    .card {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .input-card { padding: 18px; position: sticky; top: 18px; }
+    .result-card { padding: 20px; min-height: 590px; }
+
+    /* ── Type selector tabs ────────────────────────────────────────────── */
+    .type-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+      padding: 4px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--soft); margin-bottom: 14px;
+    }
+    .type-btn {
+      border: 0; border-radius: 6px; padding: 10px 7px; font-weight: 900;
+      background: transparent; color: var(--muted); min-height: 40px;
+      transition: background .15s, color .15s;
+    }
+    .type-btn.active { background: var(--panel); color: var(--ink); }
+    .type-btn:hover:not(.active) { color: var(--ink); }
+
+    /* ── Source tabs ───────────────────────────────────────────────────── */
+    .source-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px;
+    }
+    .source-btn {
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 10px;
+      background: var(--panel); color: var(--muted); font-weight: 900;
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .source-btn.active {
+      border-color: var(--accent); background: var(--accent-l); color: var(--accent-s);
+    }
+
+    /* ── Dropzone ──────────────────────────────────────────────────────── */
+    .dropzone {
+      display: grid; place-items: center; min-height: 170px;
+      border: 1.5px dashed #a7b8b2; border-radius: var(--radius);
+      background: var(--soft); padding: 22px; text-align: center; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--accent); }
+    .dropzone strong { display: block; margin-bottom: 6px; }
+    .dropzone span { color: var(--muted); font-size: 13px; }
+
+    /* ── Form fields ───────────────────────────────────────────────────── */
+    .field { display: grid; gap: 6px; margin-top: 14px; }
+    .field label { color: var(--muted); font-weight: 850; font-size: 13px; }
+    .field input, .field textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 10px 12px; background: var(--panel); box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+    .field textarea { resize: vertical; }
+
+    /* ── Preview ───────────────────────────────────────────────────────── */
+    #imgPreview {
+      width: 100%; aspect-ratio: 4/3; border-radius: var(--radius);
+      border: 1px solid var(--line); object-fit: cover;
+      background: var(--ocr-bg); margin-top: 14px; display: none;
+    }
+    .file-card {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 14px; margin-top: 14px; background: var(--soft);
+    }
+    .file-card strong { display: block; }
+    .file-card span { color: var(--muted); font-size: 13px; }
+
+    /* ── Submit button ─────────────────────────────────────────────────── */
+    #submitBtn {
+      width: 100%; margin-top: 16px; padding: 13px 16px;
+      color: #fff; background: var(--accent); border: 0;
+      border-radius: var(--radius); font-weight: 950; font-size: 15px;
+      transition: opacity .15s;
+    }
+    #submitBtn:disabled { opacity: .65; cursor: not-allowed; }
+    #submitBtn:not(:disabled):hover { opacity: .9; }
+    .error-msg { color: var(--danger); font-weight: 850; margin-top: 10px; }
+
+    /* ── Progress steps ────────────────────────────────────────────────── */
+    .progress { margin-top: 16px; display: grid; gap: 8px; }
+    .step { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 850; font-size: 13px; }
+    .step.done { color: var(--accent-s); }
+    .step-icon { width: 16px; height: 16px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+    .step.done .step-icon { background: var(--accent); }
+
+    /* ── Results: empty state ──────────────────────────────────────────── */
+    .empty {
+      min-height: 520px; display: grid; place-content: center;
+      text-align: center; color: var(--muted);
+    }
+    .empty h2 { color: var(--ink); margin: 0 0 8px; font-size: 32px; }
+
+    /* ── Results: split layout ─────────────────────────────────────────── */
+    .result-split {
+      display: grid; grid-template-columns: minmax(200px, 300px) 1fr;
+      gap: 20px; align-items: start;
+    }
+    @media (max-width: 900px) { .result-split { grid-template-columns: 1fr; } }
+    .result-img {
+      width: 100%; aspect-ratio: 1; object-fit: cover;
+      border-radius: var(--radius); border: 1px solid var(--line);
+      background: var(--ocr-bg);
+    }
+    .result-detail { min-width: 0; }
+
+    /* ── Score display ─────────────────────────────────────────────────── */
+    .section-label {
+      display: block; color: var(--muted); font-size: 11px;
+      font-weight: 900; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .score-value { display: block; font-size: 54px; line-height: 1; margin-top: 6px; font-weight: 800; }
+    .score-bar { height: 14px; border-radius: 999px; background: var(--line); margin: 10px 0 16px; overflow: hidden; }
+    .score-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, #0f766e, #eab308, #dc2626);
+      transition: width .5s ease;
+    }
+
+    /* ── Risk badge ────────────────────────────────────────────────────── */
+    .risk-badge {
+      display: inline-flex; border-radius: 999px; padding: 10px 14px;
+      font-weight: 950; font-size: 14px; margin-bottom: 16px;
+    }
+    .risk-safe    { background: var(--accent-l); color: var(--accent-s); }
+    .risk-low     { background: var(--accent-l); color: var(--accent-s); }
+    .risk-medium  { background: var(--warn-l); color: var(--warn); }
+    .risk-high    { background: var(--warn-l); color: var(--warn); }
+    .risk-critical{ background: var(--danger-l); color: var(--danger); }
+
+    /* ── Category rows ─────────────────────────────────────────────────── */
+    h3 { font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; }
+    .cat-list { display: grid; gap: 6px; }
+    .cat-row { display: grid; grid-template-columns: 170px 1fr 54px; gap: 8px; align-items: center; font-weight: 850; font-size: 13px; }
+    .mini-track { height: 7px; background: var(--line); border-radius: 999px; overflow: hidden; }
+    .mini-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+
+    /* ── Chips ─────────────────────────────────────────────────────────── */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip {
+      border-radius: 999px; padding: 5px 10px;
+      background: var(--soft); color: var(--accent-s); font-weight: 850; font-size: 13px;
+    }
+
+    /* ── OCR text ──────────────────────────────────────────────────────── */
+    .ocr-box {
+      min-height: 80px; margin: 8px 0 0; white-space: pre-wrap;
+      border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px; background: var(--ocr-bg); color: var(--ocr-fg);
+      font-family: ui-monospace, "Cascadia Code", monospace; font-size: 13px;
+      overflow: auto; max-height: 200px;
+    }
+
+    /* ── Recommendation ────────────────────────────────────────────────── */
+    .rec { font-size: 15px; font-weight: 850; margin-top: 4px; }
+
+    /* ── Notice ────────────────────────────────────────────────────────── */
+    .notice {
+      margin-top: 14px; border: 1px solid #f1c37d; border-radius: var(--radius);
+      padding: 12px; background: var(--warn-l); color: var(--warn); font-weight: 850; font-size: 13px;
+    }
+
+    /* ── Document metadata grid ────────────────────────────────────────── */
+    .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+    .meta-cell { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; background: var(--soft); }
+    .meta-cell .section-label { margin-bottom: 4px; }
+    .meta-cell strong { font-size: 14px; }
+
+    /* ── Actions ───────────────────────────────────────────────────────── */
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    .btn-secondary {
+      padding: 10px 14px; color: var(--accent-s); background: var(--accent-l);
+      border: 0; border-radius: var(--radius); font-weight: 900; font-size: 13px;
+      transition: opacity .15s;
+    }
+    .btn-secondary:hover { opacity: .8; }
+
+    /* ── Meta info line ────────────────────────────────────────────────── */
+    .meta-line { font-size: 12px; color: var(--muted); margin-top: 16px; }
+    .meta-line span { margin-right: 12px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header class="hero">
+    <div>
+      <div class="eyebrow">AI-Powered Multimodal Moderation Platform</div>
+      <h1>Aegis Moderation</h1>
+      <p class="subhead">Analyze images, videos, text, PDFs, and DOCX files locally with detailed AI safety reports.</p>
+    </div>
+    <div class="hero-right">
+      <div class="status-pill" id="healthPill">Checking service…</div>
+      <button class="status-pill" id="darkToggle" title="Toggle dark mode">🌙 Dark</button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div class="workspace">
+
+    <!-- ── Input panel ───────────────────────────────────────────────── -->
+    <form class="card input-card" id="moderateForm" onsubmit="return false;">
+
+      <!-- Content-type selector -->
+      <div class="type-grid" id="typeTabs">
+        <button type="button" class="type-btn active" data-type="image">Image</button>
+        <button type="button" class="type-btn" data-type="video">Video</button>
+        <button type="button" class="type-btn" data-type="text">Text</button>
+        <button type="button" class="type-btn" data-type="pdf">PDF</button>
+        <button type="button" class="type-btn" data-type="docx">DOCX</button>
+      </div>
+
+      <!-- Upload / URL source toggle (hidden for text) -->
+      <div class="source-grid" id="sourceGrid">
+        <button type="button" class="source-btn active" id="srcUpload">Upload</button>
+        <button type="button" class="source-btn" id="srcUrl">URL</button>
+      </div>
+
+      <!-- Dropzone (upload) -->
+      <div class="dropzone" id="dropzone" title="Click to select a file">
+        <input type="file" id="fileInput" hidden />
+        <strong id="dropLabel">Upload Image</strong>
+        <span id="dropHint">JPEG, PNG, WEBP, GIF — up to 10 MB</span>
+      </div>
+
+      <!-- URL input -->
+      <div class="field" id="urlField" style="display:none;">
+        <label for="urlInput">Paste URL</label>
+        <input type="url" id="urlInput" placeholder="https://example.com/file" />
+      </div>
+
+      <!-- Text input -->
+      <div class="field" id="textField" style="display:none;">
+        <label for="textInput">Text Content</label>
+        <textarea id="textInput" rows="8" placeholder="Paste text to moderate…" style="min-height:190px;"></textarea>
+      </div>
+
+      <!-- Image preview -->
+      <img id="imgPreview" alt="Selected preview" />
+      <div class="file-card" id="fileCard" style="display:none;">
+        <strong id="fileCardName"></strong>
+        <span id="fileCardSize"></span>
+      </div>
+
+      <!-- Optional caption -->
+      <div class="field" id="captionField">
+        <label for="captionInput">Optional context</label>
+        <textarea id="captionInput" rows="2" placeholder="Add context when it helps the analysis"></textarea>
+      </div>
+
+      <button type="submit" id="submitBtn">Analyze Image</button>
+      <p class="error-msg" id="errorMsg" style="display:none;"></p>
+
+      <!-- Progress steps -->
+      <div class="progress" id="progressBox" style="display:none;">
+        <strong style="font-size:13px;" id="progressTitle">Analyzing…</strong>
+        <div id="stepsList"></div>
+      </div>
+
+    </form>
+
+    <!-- ── Result panel ─────────────────────────────────────────────── -->
+    <section class="card result-card" id="resultPanel" aria-live="polite">
+      <div class="empty" id="emptyState">
+        <h2>Moderation Report</h2>
+        <p>Upload or paste content above — your report will appear here.</p>
+      </div>
+      <div id="reportView" style="display:none;"></div>
+    </section>
+
+  </div><!-- .workspace -->
+</div><!-- .shell -->
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Aegis Moderation — standalone vanilla JS dashboard
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Content type metadata ─────────────────────────────────────────────── */
+const TYPES = {
+  image: {
+    label: "Image", endpoint: "/api/v1/moderate/image",
+    accept: "image/jpeg,image/png,image/webp,image/gif", maxLabel: "10 MB",
+    stages: ["Validation", "OCR", "Vision Models", "Classification", "Rule Engine"],
+    supportsUrl: true, supportsUpload: true, supportsCaption: true,
+  },
+  video: {
+    label: "Video", endpoint: "/api/v1/moderate/video",
+    accept: "video/mp4,video/quicktime,video/webm,video/x-matroska", maxLabel: "250 MB",
+    stages: ["Validation", "Frame Extraction", "Vision Models", "Transcript", "Rule Engine"],
+    supportsUrl: false, supportsUpload: true, supportsCaption: true,
+  },
+  text: {
+    label: "Text", endpoint: "/api/v1/moderate/text",
+    stages: ["Validation", "Text Classifier", "PII Detection", "Rule Engine"],
+    supportsUrl: false, supportsUpload: false, supportsCaption: false,
+  },
+  pdf: {
+    label: "PDF", endpoint: "/api/v1/moderate/pdf",
+    accept: "application/pdf,.pdf", maxLabel: "25 MB",
+    stages: ["Validation", "Metadata", "Text Extraction", "OCR", "Rule Engine"],
+    supportsUrl: true, supportsUpload: true, supportsCaption: false,
+  },
+  docx: {
+    label: "DOCX", endpoint: "/api/v1/moderate/docx",
+    accept: "application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx",
+    maxLabel: "25 MB",
+    stages: ["Validation", "Text Extraction", "Embedded Images", "PII Detection", "Rule Engine"],
+    supportsUrl: true, supportsUpload: true, supportsCaption: false,
+  },
+};
+
+/* ── Category display order ────────────────────────────────────────────── */
+const CAT_ORDER = [
+  ["adult_content","Adult Content"],["nudity","Nudity"],["suggestive_content","Suggestive Content"],
+  ["violence","Violence"],["graphic_violence","Graphic Violence"],["weapons","Weapons"],
+  ["drugs","Drugs"],["blood","Blood"],["medical_content","Medical Content"],
+  ["political_propaganda","Political Content"],["religious_extremism","Religious Extremism"],
+  ["hate_speech","Hate Speech"],["hate_symbol","Hate Symbols"],["toxic_text","Toxic Language"],
+  ["spam","Spam"],["scam","Scam"],["phishing","Phishing"],["malware_links","Malware Links"],
+  ["misinformation","Misinformation"],["self_harm","Self Harm"],
+  ["child_safety_risk","Child Safety Risk"],["pii_detection","Personal Information"],
+  ["qr_code","QR Codes"],["barcode","Barcodes"],["watermark","Watermarks"],
+  ["copyright_notice","Copyright Notices"],["sensitive_document","Sensitive Documents"],
+  ["financial_information","Financial Information"],["identity_document","Identity Documents"],
+  ["document","Document"],
+];
+
+/* ── State ─────────────────────────────────────────────────────────────── */
+const S = {
+  type: "image",
+  source: "upload",   // "upload" | "url" | "text"
+  file: null,
+  url: "",
+  text: "",
+  caption: "",
+  busy: false,
+  report: null,
+  error: "",
+  imgPreviewUrl: "",
+};
+
+/* ── Utility ───────────────────────────────────────────────────────────── */
+function clamp(v) { return Math.max(0, Math.min(100, Number(v) || 0)); }
+function prettify(s) {
+  return String(s||"").replace(/_/g," ").replace(/\b\w/g, c => c.toUpperCase());
+}
+function riskClass(r) {
+  const u = (r||"").toUpperCase();
+  if (u.includes("CRITICAL")) return "risk-critical";
+  if (u.includes("HIGH"))     return "risk-high";
+  if (u.includes("MEDIUM"))   return "risk-medium";
+  if (u.includes("LOW"))      return "risk-low";
+  return "risk-safe";
+}
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function fmt(n) { return Number(n||0).toFixed(1); }
+
+/* ── DOM refs ──────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const typeTabs   = $("typeTabs");
+const sourceGrid = $("sourceGrid");
+const srcUpload  = $("srcUpload");
+const srcUrl     = $("srcUrl");
+const dropzone   = $("dropzone");
+const fileInput  = $("fileInput");
+const dropLabel  = $("dropLabel");
+const dropHint   = $("dropHint");
+const imgPreview = $("imgPreview");
+const fileCard   = $("fileCard");
+const fileCardName = $("fileCardName");
+const fileCardSize = $("fileCardSize");
+const urlField   = $("urlField");
+const urlInput   = $("urlInput");
+const textField  = $("textField");
+const textInput  = $("textInput");
+const captionField = $("captionField");
+const captionInput = $("captionInput");
+const submitBtn  = $("submitBtn");
+const errorMsg   = $("errorMsg");
+const progressBox = $("progressBox");
+const progressTitle = $("progressTitle");
+const stepsList  = $("stepsList");
+const healthPill = $("healthPill");
+const darkToggle = $("darkToggle");
+const emptyState = $("emptyState");
+const reportView = $("reportView");
+
+/* ── Health check ──────────────────────────────────────────────────────── */
+fetch("/api/v1/health")
+  .then(r => r.json())
+  .then(d => { healthPill.textContent = `${(d.status||"").toUpperCase()} / ${d.mode||""}`; })
+  .catch(() => { healthPill.textContent = "Service unavailable"; });
+
+/* ── Dark mode ─────────────────────────────────────────────────────────── */
+function applyTheme(dark) {
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  darkToggle.textContent = dark ? "☀ Light" : "🌙 Dark";
+  try { localStorage.setItem("aegis-theme", dark ? "dark" : "light"); } catch {}
+}
+(function() {
+  const saved = (() => { try { return localStorage.getItem("aegis-theme"); } catch { return null; } })();
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(saved ? saved === "dark" : prefersDark);
+})();
+darkToggle.addEventListener("click", () => {
+  applyTheme(document.documentElement.getAttribute("data-theme") !== "dark");
+});
+
+/* ── Type tab switching ────────────────────────────────────────────────── */
+typeTabs.addEventListener("click", e => {
+  const btn = e.target.closest(".type-btn");
+  if (!btn || S.busy) return;
+  const newType = btn.dataset.type;
+  if (newType === S.type) return;
+  S.type = newType;
+  S.file = null; S.url = ""; S.imgPreviewUrl = "";
+  S.source = TYPES[newType].supportsUpload ? "upload" : "text";
+  renderInput();
+  clearReport();
+});
+
+/* ── Source tab switching ──────────────────────────────────────────────── */
+srcUpload.addEventListener("click", () => { if (!S.busy) { S.source = "upload"; S.url = ""; renderInput(); } });
+srcUrl.addEventListener("click",    () => { if (!S.busy) { S.source = "url"; S.file = null; S.imgPreviewUrl = ""; renderInput(); } });
+
+/* ── File selection ────────────────────────────────────────────────────── */
+dropzone.addEventListener("click", () => { if (!S.busy) fileInput.click(); });
+dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("dragover"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+dropzone.addEventListener("drop", e => {
+  e.preventDefault(); dropzone.classList.remove("dragover");
+  if (!S.busy && e.dataTransfer.files.length) onFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", e => { if (e.target.files.length) onFile(e.target.files[0]); });
+
+function onFile(f) {
+  S.file = f;
+  if (S.type === "image") {
+    if (S.imgPreviewUrl) URL.revokeObjectURL(S.imgPreviewUrl);
+    S.imgPreviewUrl = URL.createObjectURL(f);
+  }
+  renderInput();
+}
+
+urlInput.addEventListener("input", () => {
+  S.url = urlInput.value;
+  if (S.type === "image" && S.source === "url") renderInput();
+});
+textInput.addEventListener("input", () => { S.text = textInput.value; });
+captionInput.addEventListener("input", () => { S.caption = captionInput.value; });
+
+/* ── Form submission ───────────────────────────────────────────────────── */
+$("moderateForm").addEventListener("submit", async () => {
+  if (S.busy) return;
+  setError("");
+  const t = TYPES[S.type];
+
+  let body, headers;
+
+  if (S.type === "text") {
+    const txt = textInput.value.trim();
+    if (!txt) { setError("Enter text to analyze."); return; }
+    body = JSON.stringify({ text: txt });
+    headers = { "Content-Type": "application/json" };
+  } else {
+    const fd = new FormData();
+    if (S.source === "upload") {
+      if (!S.file) { setError(`Choose a ${t.label} file first.`); return; }
+      fd.append("file", S.file);
+    } else {
+      const u = urlInput.value.trim();
+      if (!u) { setError(`Enter a URL.`); return; }
+      fd.append(S.type === "image" ? "image_url" : "document_url", u);
+    }
+    if (t.supportsCaption && captionInput.value.trim()) {
+      fd.append("caption", captionInput.value.trim());
+    }
+    body = fd;
+    headers = {};
+  }
+
+  S.busy = true; S.report = null;
+  renderInput();
+  startProgress(t.stages);
+
+  try {
+    const resp = await fetch(t.endpoint, { method: "POST", headers, body });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.detail || "Analysis failed.");
+    S.report = json;
+    finishProgress(t.stages.length);
+    renderReport();
+  } catch (err) {
+    setError(err.message);
+    hideProgress();
+  } finally {
+    S.busy = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = `Analyze ${t.label}`;
+  }
+});
+
+/* ── Progress animation ────────────────────────────────────────────────── */
+let _progressInterval = null;
+let _progressStep = -1;
+
+function startProgress(stages) {
+  _progressStep = 0;
+  progressTitle.textContent = `Analyzing ${TYPES[S.type].label.toLowerCase()}…`;
+  stepsList.innerHTML = stages.map((s,i) => `
+    <div class="step${i===0?' done':''}" id="step_${i}">
+      <div class="step-icon"></div><span>${esc(s)}</span>
+    </div>`).join("");
+  progressBox.style.display = "grid";
+  submitBtn.disabled = true;
+  submitBtn.textContent = `Analyzing…`;
+  clearInterval(_progressInterval);
+  _progressInterval = setInterval(() => {
+    _progressStep = Math.min(_progressStep + 1, stages.length - 1);
+    for (let i = 0; i < stages.length; i++) {
+      const el = $(`step_${i}`);
+      if (el) el.className = `step${i <= _progressStep ? " done" : ""}`;
+    }
+  }, 700);
+}
+
+function finishProgress(total) {
+  clearInterval(_progressInterval);
+  for (let i = 0; i < total; i++) {
+    const el = $(`step_${i}`);
+    if (el) el.className = "step done";
+  }
+}
+
+function hideProgress() {
+  clearInterval(_progressInterval);
+  progressBox.style.display = "none";
+}
+
+/* ── Render: input panel ───────────────────────────────────────────────── */
+function renderInput() {
+  const t = TYPES[S.type];
+
+  // type tabs
+  typeTabs.querySelectorAll(".type-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.type === S.type)
+  );
+
+  // source tabs visibility
+  const showSource = t.supportsUrl && t.supportsUpload;
+  sourceGrid.style.display = showSource ? "grid" : "none";
+  srcUpload.classList.toggle("active", S.source === "upload");
+  srcUrl.classList.toggle("active", S.source === "url");
+
+  // dropzone
+  const showDrop = t.supportsUpload && S.source === "upload";
+  dropzone.style.display = showDrop ? "grid" : "none";
+  fileInput.accept = t.accept || "";
+  dropLabel.textContent = S.file ? S.file.name : `Upload ${t.label}`;
+  dropHint.textContent = S.file
+    ? `${(S.file.size/1024/1024).toFixed(2)} MB`
+    : `${t.accept ? t.accept.split(",").map(a => a.split("/").pop().toUpperCase().replace(".","")).join(", ") : t.label} — up to ${t.maxLabel||""}`;
+
+  // URL field
+  urlField.style.display = (t.supportsUrl && S.source === "url") ? "grid" : "none";
+
+  // text field
+  textField.style.display = S.type === "text" ? "grid" : "none";
+
+  // image preview
+  if (S.type === "image" && S.source === "upload" && S.imgPreviewUrl) {
+    imgPreview.src = S.imgPreviewUrl; imgPreview.style.display = "block";
+  } else if (S.type === "image" && S.source === "url" && urlInput.value.trim()) {
+    imgPreview.src = urlInput.value.trim(); imgPreview.style.display = "block";
+  } else {
+    imgPreview.src = ""; imgPreview.style.display = "none";
+  }
+
+  // non-image file card
+  if (S.file && S.type !== "image") {
+    fileCard.style.display = "block";
+    fileCardName.textContent = S.file.name;
+    fileCardSize.textContent = `${Math.round(S.file.size/1024).toLocaleString()} KB selected`;
+  } else {
+    fileCard.style.display = "none";
+  }
+
+  // caption field
+  captionField.style.display = t.supportsCaption ? "grid" : "none";
+
+  // submit button label
+  if (!S.busy) submitBtn.textContent = `Analyze ${t.label}`;
+}
+
+/* ── Report rendering ──────────────────────────────────────────────────── */
+function clearReport() {
+  S.report = null; S.error = "";
+  hideProgress();
+  emptyState.style.display = "grid";
+  reportView.style.display = "none";
+  reportView.innerHTML = "";
+}
+
+function setError(msg) {
+  S.error = msg;
+  errorMsg.textContent = msg;
+  errorMsg.style.display = msg ? "block" : "none";
+}
+
+function renderReport() {
+  const r = S.report;
+  if (!r) return;
+  emptyState.style.display = "none";
+
+  const cats = r.categories || {};
+  const labels = r.category_labels || {};
+  const score = clamp(r.overall_score);
+  const risk = r.risk_level || "SAFE";
+  const catRows = buildCatRows(cats, labels);
+  const objects = (r.objects || []);
+  const ocrText = r.ocr_text || r.extracted_text_preview || r.video?.transcript || "";
+  const recText = r.recommendation || r.decision || "";
+  const decText = r.decision || "";
+  const modVersions = r.model_versions || {};
+
+  /* preview left column */
+  let previewHTML = "";
+  if (S.type === "image" && (S.imgPreviewUrl || (S.source === "url" && S.url))) {
+    const src = S.imgPreviewUrl || S.url;
+    previewHTML = `<img class="result-img" src="${esc(src)}" alt="Analyzed image" />`;
+  } else if (S.type === "text") {
+    previewHTML = `<div class="file-card"><strong>Text Submission</strong><pre class="ocr-box" style="margin-top:8px;max-height:280px;">${esc(String(textInput.value||"").slice(0,800))}</pre></div>`;
+  } else {
+    const doc = r.document || {};
+    const fi = doc.file_info || {};
+    previewHTML = `<div class="file-card">
+      <span class="section-label">${esc(r.content_type||S.type).toUpperCase()}</span>
+      <strong style="display:block;margin-top:6px;">${esc(fi.filename || (S.file&&S.file.name) || prettify(S.type))}</strong>
+      <span style="color:var(--muted);font-size:13px;">${esc(r.content_type||S.type)} moderation report</span>
+    </div>`;
+  }
+
+  /* category rows */
+  const catRowsHTML = catRows.map(([key, label, val]) => `
+    <div class="cat-row">
+      <span>${esc(label)}</span>
+      <div class="mini-track"><div class="mini-fill" style="width:${clamp(val)}%"></div></div>
+      <span style="text-align:right;">${fmt(val)}%</span>
+    </div>`).join("");
+
+  /* detected objects */
+  const objHTML = objects.length
+    ? objects.map(o => `<span class="chip">${esc(o)}</span>`).join("")
+    : `<span class="chip">None detected</span>`;
+
+  /* document metadata */
+  let docHTML = "";
+  if (r.document) {
+    const doc = r.document;
+    const fi = doc.file_info || {};
+    const cells = [
+      ["File Type", fi.file_type || (r.content_type||"").toUpperCase()],
+      ["File Size", fi.file_size_bytes ? `${Math.round(fi.file_size_bytes/1024).toLocaleString()} KB` : "Unknown"],
+      ["Pages", doc.page_count != null ? doc.page_count : "N/A"],
+      ["Processing Time", `${doc.processing_time_seconds || 0}s`],
+      ["Embedded Images", doc.embedded_images || 0],
+      ["Tables", doc.table_count || 0],
+    ];
+    const cellsHTML = cells.map(([l,v]) => `
+      <div class="meta-cell">
+        <span class="section-label">${esc(l)}</span>
+        <strong>${esc(String(v))}</strong>
+      </div>`).join("");
+    let linksHTML = "";
+    if ((doc.links||[]).length) {
+      linksHTML = `<h3>Detected Links</h3><div class="chips">${doc.links.slice(0,8).map(l=>`<span class="chip" title="${esc(l)}">${esc(l.slice(0,50))}${l.length>50?"…":""}</span>`).join("")}</div>`;
+    }
+    docHTML = `<h3>File Information</h3><div class="meta-grid">${cellsHTML}</div>${linksHTML}`;
+  }
+
+  /* video info */
+  let videoHTML = "";
+  if (r.video) {
+    const v = r.video;
+    videoHTML = `<h3>Video Analysis</h3><div class="meta-grid">
+      <div class="meta-cell"><span class="section-label">Frames Extracted</span><strong>${v.frame_count||0}</strong></div>
+      <div class="meta-cell"><span class="section-label">Unsafe Frames</span><strong>${v.unsafe_frame_count||0}</strong></div>
+      <div class="meta-cell"><span class="section-label">Max Consecutive</span><strong>${v.max_consecutive_unsafe||0}</strong></div>
+    </div>`;
+  }
+
+  /* model versions */
+  const versionParts = Object.entries(modVersions).slice(0,4);
+  const versionLine = versionParts.length
+    ? `<div class="meta-line">${versionParts.map(([k,v])=>`<span><strong>${esc(k)}:</strong> ${esc(v)}</span>`).join("")}</div>`
+    : "";
+
+  /* notice / pipeline error */
+  const noticeHTML = r.error
+    ? `<div class="notice">⚠ Pipeline notice: ${esc(r.error)}</div>` : "";
+
+  const decLabel = decText === "Reject" ? "Reject" : decText === "Review Required" ? "Review Required" : "Accept";
+
+  reportView.innerHTML = `
+    <div class="result-split">
+      <div>${previewHTML}</div>
+      <div class="result-detail">
+        <span class="section-label">Overall Safety Score</span>
+        <strong class="score-value">${fmt(score)}%</strong>
+        <div class="score-bar"><div class="score-fill" style="width:${score}%"></div></div>
+
+        <span class="section-label">Risk Level</span><br>
+        <span class="risk-badge ${riskClass(risk)}" style="margin-top:6px;">${esc(risk)}</span>
+
+        ${noticeHTML}
+        ${docHTML}
+        ${videoHTML}
+
+        <h3>Detected Categories</h3>
+        <div class="cat-list">${catRowsHTML}</div>
+
+        <h3>Detected Objects</h3>
+        <div class="chips">${objHTML}</div>
+
+        <h3>${r.content_type==="text"?"Text Preview":"OCR / Extracted Text"}</h3>
+        <pre class="ocr-box">${esc(ocrText||"No text detected.")}</pre>
+
+        <h3>Recommendation</h3>
+        <p class="rec">${esc(decLabel)} — ${esc(recText)}</p>
+
+        ${versionLine}
+
+        <div class="actions">
+          <button type="button" class="btn-secondary" id="dlJson">Download JSON</button>
+          <button type="button" class="btn-secondary" onclick="window.print()">Download PDF</button>
+        </div>
+      </div>
+    </div>`;
+
+  reportView.style.display = "block";
+  $("dlJson").addEventListener("click", downloadJson);
+}
+
+/* ── Build category rows ───────────────────────────────────────────────── */
+function buildCatRows(cats, labels) {
+  const seen = new Set(CAT_ORDER.map(([k]) => k));
+  const rows = CAT_ORDER.map(([key, dflt]) => [key, labels[key]||dflt, Number(cats[key]||0)]);
+  Object.keys(cats).forEach(key => {
+    if (!seen.has(key)) rows.push([key, labels[key]||prettify(key), Number(cats[key]||0)]);
+  });
+  return rows;
+}
+
+/* ── Download JSON ─────────────────────────────────────────────────────── */
+function downloadJson() {
+  if (!S.report) return;
+  const blob = new Blob([JSON.stringify(S.report, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `aegis-${S.type}-moderation-report.json`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+/* ── Init ──────────────────────────────────────────────────────────────── */
+renderInput();
+</script>
+</body>
 </html>

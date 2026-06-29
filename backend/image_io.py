@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 import tempfile
 from collections.abc import Iterable
@@ -13,9 +14,9 @@ import requests
 from PIL import Image, UnidentifiedImageError
 
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-MAX_IMAGE_BYTES = 10 * 1024 * 1024
-MAX_PIXELS = 40_000_000
-REQUEST_TIMEOUT = 12
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_SIZE_MB", "10")) * 1024 * 1024
+MAX_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", "40000000"))
+REQUEST_TIMEOUT = int(os.getenv("IMAGE_DOWNLOAD_TIMEOUT_SECONDS", "12"))
 
 
 class ImageInputError(ValueError):

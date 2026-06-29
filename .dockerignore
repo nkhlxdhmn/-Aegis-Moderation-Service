@@ -21,12 +21,7 @@ temp/
 *.ipynb
 .ipynb_checkpoints/
 data/
-training/datasets/
-training/weights/
-training/outputs/
-training/checkpoints/
-training/runs/
-training/logs/
+training/
 models/**/*.bin
 models/**/*.pt
 models/**/*.pth
@@ -43,3 +38,5 @@ docs/
 tests/
 frontend/node_modules/
 frontend/dist/
+frontend/package*.json
+frontend/src/

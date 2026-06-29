@@ -1,12 +1,4 @@
 # syntax=docker/dockerfile:1.7
-FROM node:22-alpine AS frontend-build
-
-WORKDIR /frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
-
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -40,7 +32,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     && python -m pip install torch==2.5.1+cu124 torchvision==0.20.1+cu124 --index-url https://download.pytorch.org/whl/cu124 \
     && python -m pip install -r requirements.txt
 
-COPY --chown=aegis:aegis --from=frontend-build /frontend/dist ./frontend/dist
+COPY --chown=aegis:aegis frontend/index.html ./frontend/index.html
 COPY --chown=aegis:aegis backend ./backend
 
 RUN mkdir -p /home/aegis/.cache /home/aegis/.config /app/data \

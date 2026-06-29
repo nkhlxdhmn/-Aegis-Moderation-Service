@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aegis-moderation"
 version = "1.0.0"
-description = "Standalone AI-powered image moderation platform with a browser dashboard."
+description = "Standalone AI-powered multimodal content moderation platform with a browser dashboard."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Aegis Moderation Contributors" }]
-keywords = ["ai", "moderation", "fastapi", "ocr", "computer-vision", "huggingface"]
+keywords = ["ai", "moderation", "fastapi", "ocr", "computer-vision", "huggingface", "multimodal"]
 
 [tool.setuptools]
 packages = ["backend", "backend.pipeline", "backend.models"]
@@ -18,8 +18,9 @@ py-modules = []
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_main.py", "test_standalone_report.py"]
+python_files = ["test_*.py"]
 pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.ruff]
 line-length = 100

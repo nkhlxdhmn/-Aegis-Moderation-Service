@@ -11,7 +11,6 @@ from typing import Annotated, Any
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 from starlette.concurrency import run_in_threadpool
 
@@ -39,8 +38,6 @@ APP_NAME = "Aegis Moderation"
 APP_VERSION = "1.0.0"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
-FRONTEND_DIST_DIR = FRONTEND_DIR / "dist"
-FRONTEND_ASSETS_DIR = FRONTEND_DIST_DIR / "assets"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("aegis")
@@ -48,7 +45,7 @@ logger = logging.getLogger("aegis")
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    description="Standalone AI-powered multimodal moderation platform with a browser dashboard.",
+    description="Standalone AI-powered multimodal content moderation platform.",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
@@ -62,8 +59,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if FRONTEND_ASSETS_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSETS_DIR), name="assets")
+# Security headers injected on every response.
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 if Counter and Histogram:
     REQUEST_COUNT = Counter("aegis_requests_total", "Total API requests", ["endpoint", "status"])
@@ -99,12 +102,10 @@ class HealthResponse(BaseModel):
 def index() -> FileResponse:
     """Serve the standalone browser dashboard."""
 
-    index_path = FRONTEND_DIST_DIR / "index.html"
-    if not index_path.exists():
-        index_path = FRONTEND_DIR / "index.html"
+    index_path = FRONTEND_DIR / "index.html"
     if not index_path.exists():
         raise HTTPException(status_code=500, detail="Frontend assets are missing.")
-    return FileResponse(index_path)
+    return FileResponse(index_path, media_type="text/html")
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)
@@ -116,12 +117,20 @@ def health() -> HealthResponse:
 
 @app.get("/api/v1/model-health")
 def model_health() -> dict[str, Any]:
-    """Return model readiness metadata without forcing downloads."""
+    """Return per-model readiness status without forcing any downloads."""
 
+    try:
+        from backend.model_warmup import model_status, model_status_detail
+        detail = model_status_detail()
+        overall = model_status()
+    except Exception:
+        detail = {}
+        overall = "not_loaded"
     return {
-        "status": "ready",
+        "status": overall,
         "mode": "lazy-load",
-        "message": "Models are loaded or downloaded by the pipeline on first analysis.",
+        "message": "Models load on first request or when MODEL_WARMUP=true.",
+        "models": detail,
         "components": ["OCR", "Text Classifier", "Vision Models", "Rule Engine", "Document Parser"],
     }
 

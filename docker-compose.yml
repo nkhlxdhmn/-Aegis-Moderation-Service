@@ -1,4 +1,4 @@
-﻿services:
+services:
   aegis-moderation:
     build:
       context: .
