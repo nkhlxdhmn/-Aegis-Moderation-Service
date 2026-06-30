@@ -1,21 +1,21 @@
 """Central orchestration for Aegis image moderation signals.
 
-Pipeline stages (Phase 5 â€” maximum accuracy):
-  Stage 0   â€” Image quality gate
-  Stage 0b  â€” Hash dedup cache
-  Stage 1   â€” Parallel NSFW + YOLO (GPU0)
-  Stage 2   â€” Smart OCR (GPU0) â€” text_detector gates OCR on text density / YOLO class
-  Stage 3   â€” SigLIP2 (GPU0) â€” category / heritage / safety embeddings
-  Stage 3b  â€” Embedding similarity search (FAISS + SigLIP) â€” cache hit short-circuits GPU1
-  Stage 4   â€” Signal fusion + cultural protection (child safety dominance)
-  Stage 5   â€” Text / PII rules
-  Stage 6   â€” BLIP multi-caption (GPU1, 3 captions)
-  Stage 7   â€” Qwen2.5-VL description (GPU1)
-  Stage 7b  â€” Qwen secondary verification for borderline content (0.60â€“0.85 pre-LLM risk)
-  Stage 8   â€” Llama-3.1-8B AWQ reasoning with all evidence (GPU1, always runs)
-  Stage 9   â€” Uncertainty estimation
-  Stage 10  â€” Confidence-weighted ensemble
-  Stage 11  â€” Hash store + Embedding store
+Pipeline stages (Phase 5 — maximum accuracy):
+  Stage 0   — Image quality gate
+  Stage 0b  — Hash dedup cache
+  Stage 1   — Parallel NSFW + YOLO (GPU0)
+  Stage 2   — Smart OCR (GPU0) — text_detector gates OCR on text density / YOLO class
+  Stage 3   — SigLIP2 (GPU0) — category / heritage / safety embeddings
+  Stage 3b  — Embedding similarity search (FAISS + SigLIP) — cache hit short-circuits GPU1
+  Stage 4   — Signal fusion + cultural protection (child safety dominance)
+  Stage 5   — Text / PII rules
+  Stage 6   — BLIP multi-caption (GPU1, 3 captions)
+  Stage 7   — Qwen2.5-VL description (GPU1)
+  Stage 7b  — Qwen secondary verification for borderline content (0.60–0.85 pre-LLM risk)
+  Stage 8   — Llama-3.1-8B AWQ reasoning with all evidence (GPU1, always runs)
+  Stage 9   — Uncertainty estimation
+  Stage 10  — Confidence-weighted ensemble
+  Stage 11  — Hash store + Embedding store
 
 Phase 5 changes from Phase 4:
   - Smart OCR: text_detector gates OCR (text_density/entropy/YOLO class)
@@ -229,7 +229,7 @@ def _compute_ensemble(
     heritage_score: float,
     llama_result: dict | None = None,
 ) -> float:
-    """Pure signal ensemble risk â€” Llama removed, weights redistributed to vision models."""
+    """Pure signal ensemble risk — Llama removed, weights redistributed to vision models."""
     heritage_factor = max(0.0, min(1.0, heritage_score))
     return max(
         0.0,
@@ -255,10 +255,10 @@ def _apply_cultural_protection(
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Reduce weapon/violence scores when cultural heritage is strongly indicated.
 
-    Phase 5 child safety dominance: child scores are NEVER reduced â€” heritage
+    Phase 5 child safety dominance: child scores are NEVER reduced — heritage
     context does not diminish child safety signals.
 
-    Weapon/blood/violence: Ã— 0.70 when heritage_score > threshold or heritage
+    Weapon/blood/violence: × 0.70 when heritage_score > threshold or heritage
     keywords detected in combined text.
     """
     if heritage_score > _HERITAGE_PROTECT_THRESHOLD:
@@ -272,7 +272,7 @@ def _apply_cultural_protection(
 
     logger.info("Cultural protection applied (heritage_score=%.3f)", heritage_score)
 
-    # Phase 5: Child safety dominance â€” pass through raw child scores unchanged.
+    # Phase 5: Child safety dominance — pass through raw child scores unchanged.
     protected_child = dict(child_scores)
 
     protected_violence = {**violence_scores}
@@ -289,14 +289,14 @@ def _apply_cultural_protection(
 def _safe_call(fn, breaker, timeout: float, model_name: str, fallback):
     """Run fn() through circuit breaker + timeout, returning fallback on any failure."""
     if breaker.is_open:
-        logger.warning("Circuit open for '%s' â€” using fallback", model_name)
+        logger.warning("Circuit open for '%s' — using fallback", model_name)
         return fallback
     try:
         return breaker.call(
             lambda: timeout_utils.timeout_call(fn, timeout=timeout, model_name=model_name)
         )
     except Exception:
-        logger.exception("'%s' stage failed â€” using fallback", model_name)
+        logger.exception("'%s' stage failed — using fallback", model_name)
         _metrics.model_errors_total.labels(model=model_name).inc()
         return fallback
 
@@ -317,7 +317,7 @@ def _check_gpu_memory() -> None:
                 used = torch.cuda.memory_allocated(i)
                 if total > 0 and (used / total) > 0.90:
                     logger.warning(
-                        "GPU%d high memory (%.1f%%) â€” flushing cache", i, used / total * 100
+                        "GPU%d high memory (%.1f%%) — flushing cache", i, used / total * 100
                     )
                     torch.cuda.empty_cache()
                     gc.collect()
@@ -361,7 +361,7 @@ def analyze_image(
     image_path: str,
     caption: str | None = None,
 ) -> ModerationPipelineResult:
-    """Run the full moderation pipeline. Never raises â€” errors become pipeline_error=True."""
+    """Run the full moderation pipeline. Never raises — errors become pipeline_error=True."""
 
     _check_gpu_memory()
 
@@ -374,7 +374,7 @@ def analyze_image(
             error_reason="Input image file does not exist.",
         )
 
-    # â”€â”€ Stage 0: Image quality gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 0: Image quality gate ────────────────────────────────────────────
     ok, quality_reason = image_quality.check_image_quality(image_path)
     if not ok:
         return ModerationPipelineResult(
@@ -385,7 +385,7 @@ def analyze_image(
             error_reason=f"Image quality check failed: {quality_reason}",
         )
 
-    # â”€â”€ Stage 0b: Hash dedup cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 0b: Hash dedup cache ─────────────────────────────────────────────
     cached = hash_cache.lookup(image_path)
     if cached:
         _metrics.hash_cache_hits_total.inc()
@@ -406,7 +406,7 @@ def analyze_image(
 
     logger.info("Moderation pipeline started")
 
-    # â”€â”€ Stage 1: Parallel NSFW + YOLO (GPU0) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 1: Parallel NSFW + YOLO (GPU0) ──────────────────────────────────
     raw_adult, yolo_detections = _parallel_nsfw_yolo(image_path)
 
     if raw_adult is None:
@@ -435,7 +435,7 @@ def analyze_image(
         ocr_text = ""
     content_quality_score: float = ocr.get_text_quality_score(ocr_text, caption)
 
-    # â”€â”€ Stage 2b: Hard Block â€” zero-tolerance keyword scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 2b: Hard Block — zero-tolerance keyword scan ────────────────────
     # Runs before all remaining GPU inference to save compute.
     _hb_text = f"{ocr_text or ''} {caption or ''}".strip()
     if _hb_text:
@@ -456,7 +456,7 @@ def analyze_image(
                 model_versions=MODEL_VERSIONS,
             )
 
-    # â”€â”€ Stage 2c: QR code detection + language detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 2c: QR code detection + language detection ─────────────────────
     qr_result = qr_detector.analyze_qr(image_path)
     detected_language = language_detector.detect(ocr_text)
     logger.info(
@@ -465,7 +465,7 @@ def analyze_image(
         detected_language,
     )
 
-    # â”€â”€ Stage 2d: Text abuse classification (optional â€” MuRIL hook) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 2d: Text abuse classification (optional — MuRIL hook) ──────────
     # Runs only when text_classifier weights are present in models/muril_abuse_final/.
     # When disabled (weights absent) _tc_result.disabled=True and abuse_score=0.0
     # so this stage is a pure no-op that adds zero overhead when not configured.
@@ -488,7 +488,7 @@ def analyze_image(
             text_classifier_score,
         )
 
-    # â”€â”€ Stage 3: SigLIP2 (GPU0) â€” uses OCR context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 3: SigLIP2 (GPU0) — uses OCR context ────────────────────────────
     def _run_siglip() -> clip_engine.ClipAnalysisResult:
         return clip_engine.analyze_content(image_path, caption, ocr_text)
 
@@ -512,7 +512,7 @@ def analyze_image(
     heritage_score = clip_result.heritage_score
     category_scores = clip_result.category_scores
 
-    # â”€â”€ Stage 3b: Embedding similarity search (FAISS) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 3b: Embedding similarity search (FAISS) ─────────────────────────
     image_embedding = _safe_call(
         lambda: clip_engine.get_image_embedding(image_path),
         cb.embedding_breaker,
@@ -527,7 +527,7 @@ def analyze_image(
 
     if embedding_hit:
         logger.info(
-            "Embedding cache hit (similarity=%.4f) â€” reusing cached decision",
+            "Embedding cache hit (similarity=%.4f) — reusing cached decision",
             embedding_hit.get("similarity", 0.0),
         )
         cached_scores = dict(embedding_hit.get("scores", {}))
@@ -549,7 +549,7 @@ def analyze_image(
             similar_images=similar_images,
         )
 
-    # â”€â”€ Stage 4: Signal fusion + cultural protection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 4: Signal fusion + cultural protection ───────────────────────────
     raw_child_scores = child_safety.analyze_child_safety(yolo_detections, clip_result.child_scores)
     raw_violence_scores = safety_detector.analyze_safety(yolo_detections, clip_result.safety_scores)
 
@@ -562,7 +562,7 @@ def analyze_image(
         caption=caption,
     )
 
-    # â”€â”€ Stage 5: Text / PII rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 5: Text / PII rules ─────────────────────────────────────────────
     promotion_scores = promotion_detector.analyze_promotion(
         ocr_text,
         caption,
@@ -573,7 +573,7 @@ def analyze_image(
     text_scores = text_safety.analyze_text_safety(ocr_text, caption)
     pii_scores = pii_detector.analyze_pii(ocr_text, caption)
 
-    # â”€â”€ Stage 5b: ML Toxicity / Hate Speech (XLM-RoBERTa, GPU) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 5b: ML Toxicity / Hate Speech (XLM-RoBERTa, GPU) ───────────────
     _tox_text = f"{ocr_text or ''} {caption or ''}".strip()
     ml_tox_scores: dict = _safe_call(
         lambda: ml_toxicity.analyze(_tox_text, None),
@@ -590,7 +590,7 @@ def analyze_image(
         "category": "Uncategorized",
     }
 
-    # â”€â”€ Stage 6: BLIP multi-caption (GPU1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 6: BLIP multi-caption (GPU1) ────────────────────────────────────
     blip_captions: list[str] = _safe_call(
         lambda: vlm_engine.generate_captions(image_path),
         cb.blip_breaker,
@@ -610,7 +610,7 @@ def analyze_image(
             caption,
         )
 
-    # â”€â”€ Stage 7: Qwen2.5-VL description (GPU1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 7: Qwen2.5-VL description (GPU1) ────────────────────────────────
     def _run_qwen_describe() -> dict:
         return qwen_vl.describe_image(image_path)
 
@@ -624,7 +624,7 @@ def analyze_image(
     qwen_description: str = qwen_result.get("description", "")
     qwen_confidence: float = float(qwen_result.get("confidence", 0.5))
 
-    # â”€â”€ Stage 7b: Secondary verification for borderline content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 7b: Secondary verification for borderline content ───────────────
     pre_llm_risk = _compute_pre_llm_risk(
         adult=adult_score,
         child=child_scores["child_safety_score"],
@@ -650,7 +650,7 @@ def analyze_image(
         qwen_verification_reason = verify_result.get("verification_reason", "")
         logger.info("Qwen secondary verification triggered (pre_llm_risk=%.3f)", pre_llm_risk)
 
-    # â”€â”€ Stage 8: Llama reasoning (GPU1) â€” always runs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 8: Llama reasoning (GPU1) — always runs ─────────────────────────
     def _run_llama() -> dict:
         return vlm_engine.reason_moderation(
             nsfw_score=adult_score,
@@ -674,7 +674,7 @@ def analyze_image(
         fallback=_LLAMA_FALLBACK,
     )
 
-    # â”€â”€ Stage 9: Uncertainty estimation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 9: Uncertainty estimation ───────────────────────────────────────
     uncertainty_score: float = uncertainty_module.compute_uncertainty(
         scores={
             "adult_score": adult_score,
@@ -689,7 +689,7 @@ def analyze_image(
         qwen_description=qwen_description,
     )
 
-    # â”€â”€ Stage 10: Ensemble (confidence-weighted Llama) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 10: Ensemble (confidence-weighted Llama) ────────────────────────
     ensemble_risk = _compute_ensemble(
         adult_score=adult_score,
         child_score=child_scores["child_safety_score"],
@@ -701,7 +701,7 @@ def analyze_image(
     )
     llama_risk, llama_approves, _ = _llama_to_risk(llama_result)
 
-    # â”€â”€ Stage 11: Hash store + Embedding store â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Stage 11: Hash store + Embedding store ─────────────────────────────────
     llama_decision = llama_result.get("decision", "UNDER_REVIEW")
     image_hash = hash_cache.store(
         image_path,

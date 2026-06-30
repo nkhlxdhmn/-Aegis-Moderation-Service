@@ -3,9 +3,9 @@
 Processes N images concurrently (data-parallel) rather than sequentially.
 Batch size is chosen dynamically by queue depth:
 
-  queue_depth â‰¤ 5   â†’ batch_size = 4
-  queue_depth 6â€“20  â†’ batch_size = 8
-  queue_depth > 20  â†’ batch_size = 16
+  queue_depth ≤ 5   → batch_size = 4
+  queue_depth 6–20  → batch_size = 8
+  queue_depth > 20  → batch_size = 16
 
 Each image still goes through the full single-image pipeline (safety_flags.analyze_image)
 in its own thread.  The benefit is that GPU forward passes from different images
@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 # Maximum concurrent images per batch tier
 _BATCH_SIZES = (
-    (20, 8),  # queue_depth â‰¤ 20 â†’ 8
-    (50, 16),  # queue_depth â‰¤ 50 â†’ 16
-    (None, 32),  # queue_depth > 50 â†’ 32
+    (20, 8),  # queue_depth ≤ 20 → 8
+    (50, 16),  # queue_depth ≤ 50 → 16
+    (None, 32),  # queue_depth > 50 → 32
 )
 _MIN_BATCH = 4
 

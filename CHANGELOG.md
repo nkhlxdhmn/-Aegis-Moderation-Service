@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.1] — 2026-06-30
+
+### Fixed
+- Docker: Added missing `COPY --chown=aegis:aegis core/ ./core/` step to both `Dockerfile` and `Dockerfile.gpu`; `core.runtime` hardware backend was unreachable inside the container.
+- `pyproject.toml`: Added `"core"` and `"core.runtime"` to setuptools `packages` so editable installs and wheels include the runtime backend.
+- Removed debug artifacts (`scratch.py`, `monitor.json`, `full_logs.txt`) from tracking and added to `.gitignore`.
+- Fixed UTF-8-SIG BOM and CP1252 mojibake in 18 Python source files.
+- `backend/pipeline/surya_ocr.py`: Added `preprocess_for_ocr()` (CLAHE + Gaussian denoise + EXIF orient) for improved OCR accuracy on low-contrast documents.
+- `backend/pipeline/video_moderation.py`: Dynamic frame sampling via `_probe_duration()` + `_compute_frame_fps()` replaces the fixed 1 fps strategy.
+
+### Added
+- **Phase 8 — Frontend completion**: `@media print` CSS block in `index.html` produces a clean A4 PDF when using browser "Print → Save as PDF". Hides input panel, adds report header, preserves score bars and category rows.
+- **Phase 8 — Report generation**: "Copy JSON" clipboard button on the moderation report; "Export PDF" label replacing the generic "Print / PDF" label.
+- **Phase 8 — Monitoring dashboard**: Decisions breakdown card (Accept / Review Required / Reject counts) and Recent Errors card added to `dashboard.html`.
+- `.gitignore`: Entries for generated audit/diagnostic markdown reports.
+
+---
+
 ## [1.0.0] — 2026-06-29
 
 ### Added

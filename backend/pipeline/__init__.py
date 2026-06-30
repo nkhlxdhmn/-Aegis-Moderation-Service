@@ -1,4 +1,4 @@
-﻿"""Moderation pipeline package for Aegis content safety decisions."""
+"""Moderation pipeline package for Aegis content safety decisions."""
 
 import os
 

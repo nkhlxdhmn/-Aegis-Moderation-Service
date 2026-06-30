@@ -328,6 +328,35 @@
     /* ── Animate report entrance ───────────────────────────────────────── */
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
     .animate-in { animation: fadeUp .4s ease; }
+
+    /* ── Print / PDF export ────────────────────────────────────────────── */
+    @media print {
+      @page { margin: 20mm 18mm; size: A4; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { background: #fff !important; color: #000 !important; font-size: 12px; }
+      .toast-container, .input-card, #darkToggle, .header-actions { display: none !important; }
+      .header { padding-bottom: 14px; border-bottom: 2px solid #000; }
+      .shell { width: 100%; padding: 0; }
+      .workspace { grid-template-columns: 1fr !important; }
+      .result-card { border: none !important; box-shadow: none !important; padding: 0 !important; min-height: unset; }
+      .result-card::before {
+        content: "Aegis Moderation — Content Safety Report";
+        display: block; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .06em;
+        color: #666; margin-bottom: 16px;
+      }
+      .empty { display: none !important; }
+      .result-split { grid-template-columns: 1fr !important; }
+      .result-img { max-height: 200px; width: auto; object-fit: contain; }
+      .actions, .btn-action { display: none !important; }
+      .score-value { font-size: 32px !important; }
+      .score-bar { margin-bottom: 12px; }
+      .score-fill { transition: none !important; }
+      .cat-list { page-break-inside: avoid; }
+      .section-title { page-break-after: avoid; }
+      .ocr-box { max-height: none !important; overflow: visible; page-break-inside: avoid; }
+      a[href]::after { content: ""; }
+    }
   </style>
 </head>
 <body>
@@ -865,7 +894,8 @@ function renderReport() {
 
         <div class="actions">
           <button type="button" class="btn-action btn-primary-sm" id="dlJson">⬇ Download JSON</button>
-          <button type="button" class="btn-action btn-ghost" onclick="window.print()">🖨 Print / PDF</button>
+          <button type="button" class="btn-action btn-ghost" id="copyJson">📋 Copy JSON</button>
+          <button type="button" class="btn-action btn-ghost" onclick="window.print()">🖨 Export PDF</button>
         </div>
       </div>
     </div>`;
@@ -879,6 +909,12 @@ function renderReport() {
   });
 
   $("dlJson").addEventListener("click", downloadJson);
+  $("copyJson").addEventListener("click", () => {
+    if (!S.report) return;
+    navigator.clipboard.writeText(JSON.stringify(S.report, null, 2))
+      .then(() => showToast("JSON copied to clipboard!", "success"))
+      .catch(() => showToast("Clipboard access denied."));
+  });
 }
 
 /* ── Build category rows ───────────────────────────────────────────────── */

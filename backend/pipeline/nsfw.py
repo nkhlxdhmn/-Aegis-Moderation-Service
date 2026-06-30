@@ -55,7 +55,7 @@ def _get_state() -> dict[str, Any]:
             model.eval()
             torch.backends.cudnn.benchmark = True
 
-            # Build label â†’ index map once
+            # Build label → index map once
             id2label: dict[int, str] = getattr(model.config, "id2label", {0: "normal", 1: "nsfw"})
             nsfw_idx = next(
                 (k for k, v in id2label.items() if "nsfw" in str(v).lower()),
@@ -84,7 +84,7 @@ def get_adult_score(image_path: str) -> float:
 
     Score interpretation:
         < 0.30  safe content
-        0.30â€“0.50  review threshold (mildly suggestive)
+        0.30–0.50  review threshold (mildly suggestive)
         > 0.50  rejected as adult content
     """
     logger.info("OpenNSFW2 inference started")

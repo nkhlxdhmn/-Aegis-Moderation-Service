@@ -13,7 +13,7 @@ authors = [{ name = "Aegis Moderation Contributors" }]
 keywords = ["ai", "moderation", "fastapi", "ocr", "computer-vision", "huggingface", "multimodal"]
 
 [tool.setuptools]
-packages = ["backend", "backend.pipeline", "backend.models"]
+packages = ["backend", "backend.pipeline", "backend.models", "core", "core.runtime"]
 py-modules = []
 
 [tool.pytest.ini_options]

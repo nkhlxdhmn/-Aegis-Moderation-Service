@@ -55,6 +55,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY --chown=aegis:aegis frontend/ ./frontend/
 COPY --chown=aegis:aegis backend/ ./backend/
+COPY --chown=aegis:aegis core/ ./core/
 COPY --chown=aegis:aegis scripts/ ./scripts/
 
 RUN mkdir -p /home/aegis/.cache/huggingface /home/aegis/.cache/torch \

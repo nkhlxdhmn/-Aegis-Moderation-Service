@@ -1,4 +1,4 @@
-﻿"""PDF and DOCX ingestion and moderation helpers."""
+"""PDF and DOCX ingestion and moderation helpers."""
 
 from __future__ import annotations
 

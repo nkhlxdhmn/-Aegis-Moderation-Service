@@ -1,4 +1,4 @@
-﻿"""Tests that all production models can be imported and their singleton state
+"""Tests that all production models can be imported and their singleton state
 objects are returned without raising exceptions.
 
 These tests do NOT load real model weights ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â they mock the heavy library

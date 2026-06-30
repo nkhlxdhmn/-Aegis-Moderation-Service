@@ -185,6 +185,31 @@
     </div>
   </div>
 
+  <!-- Decisions & Errors -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="section-title">Moderation Decisions</div>
+      <div id="decisionStats">
+        <div class="cat-stat">
+          <span>✅ Accept</span>
+          <span class="cat-count" id="decAccept" style="color:var(--green);">0</span>
+        </div>
+        <div class="cat-stat">
+          <span>⚠ Review Required</span>
+          <span class="cat-count" id="decReview" style="color:var(--warn);">0</span>
+        </div>
+        <div class="cat-stat">
+          <span>🚫 Reject</span>
+          <span class="cat-count" id="decReject" style="color:var(--danger);">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Recent Errors</div>
+      <div id="errorStats"><span style="color:var(--muted);font-size:13px;">No errors</span></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -352,6 +377,24 @@ function renderAll(d, liveModelStatus) {
     ).join("");
   } else {
     $("catFlags").innerHTML = '<span style="color:var(--muted);font-size:13px;">No flags yet</span>';
+  }
+
+  /* Decisions */
+  const decisions = mod.decisions || {};
+  $("decAccept").textContent  = (decisions["Accept"] || 0);
+  $("decReview").textContent  = (decisions["Review Required"] || 0);
+  $("decReject").textContent  = (decisions["Reject"] || 0);
+
+  /* Errors */
+  const errors = d.errors || {};
+  const errorTypes = errors.by_type || {};
+  const errorEntries = Object.entries(errorTypes).sort((a, b) => b[1] - a[1]);
+  if (errorEntries.length) {
+    $("errorStats").innerHTML = errorEntries.slice(0, 5).map(([type, count]) =>
+      `<div class="cat-stat"><span>${esc(type)}</span><span class="cat-count" style="color:var(--danger);">${count}</span></div>`
+    ).join("");
+  } else {
+    $("errorStats").innerHTML = '<span style="color:var(--muted);font-size:13px;">No errors</span>';
   }
 }
 

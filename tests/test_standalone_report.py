@@ -1,4 +1,4 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 
 from backend.reports import build_report, decide, normalize_categories
 

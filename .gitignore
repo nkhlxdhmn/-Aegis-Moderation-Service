@@ -38,6 +38,19 @@ temp/
 reports/
 run.txt
 
+# Debug / scratch artifacts
+scratch.py
+monitor.json
+full_logs.txt
+
+# Generated audit / diagnostic reports (ephemeral, not for version control)
+Audit_Report.md
+Accuracy_Improvements.md
+Fixed_Issues.md
+Performance_Report.md
+Removed_Files.md
+Security_Report.md
+
 # Local model/data artifacts
 data/
 models/**/*.bin

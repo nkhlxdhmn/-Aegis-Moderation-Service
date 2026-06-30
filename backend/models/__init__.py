@@ -1,1 +1,1 @@
-﻿"""Model registry package for Aegis Moderation."""
+"""Model registry package for Aegis Moderation."""

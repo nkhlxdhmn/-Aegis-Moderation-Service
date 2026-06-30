@@ -2,24 +2,34 @@
 
 Workflow:
   1. Validate video file.
-  2. Extract one frame per second with ffmpeg (capped at MAX_FRAMES).
-  3. Moderate all frames concurrently via batch_analyzer.analyze_batch(),
+  2. Probe video duration with ffprobe (Phase 4: dynamic sampling).
+  3. Extract frames with dynamic FPS so the entire video is covered within
+     MAX_FRAMES, rather than only analysing the first N seconds.
+  4. Moderate all frames concurrently via batch_analyzer.analyze_batch(),
      which reuses the full image pipeline (NSFW, YOLO, SigLIP2, OCR, BLIP,
      Qwen2.5-VL, Llama).
-  4. Aggregate per-frame scores: max score per key + temporal metrics.
-  5. Extract audio with ffmpeg Ã¢â€ â€™ 16 kHz mono WAV.
-  6. Transcribe audio with Whisper-large-v3.
-  7. Moderate transcript with text_moderation.moderate_text().
-  8. Merge frame scores + transcript scores + video temporal metrics.
-  9. Feed final scores dict to decision_engine.decide_with_reason_code().
+  5. Aggregate per-frame scores: max score per key + temporal metrics.
+  6. Extract audio with ffmpeg → 16 kHz mono WAV.
+  7. Transcribe audio with Whisper-large-v3.
+  8. Moderate transcript with text_moderation.moderate_text().
+  9. Merge frame scores + transcript scores + video temporal metrics.
+  10. Feed final scores dict to decision_engine.decide_with_reason_code().
 
 Video-specific score keys (read by Tier 0-D in decision_engine.py):
-  video_unsafe_frame_ratio        Ã¢â‚¬â€ fraction of frames classified as unsafe
-  video_consecutive_unsafe_frames Ã¢â‚¬â€ longest run of consecutive unsafe frames
+  video_unsafe_frame_ratio        — fraction of frames classified as unsafe
+  video_consecutive_unsafe_frames — longest run of consecutive unsafe frames
+
+Phase 4 changes:
+  - _probe_duration() uses ffprobe to get total video duration in seconds.
+  - _compute_frame_fps() calculates the minimum FPS needed to sample the
+    whole video in at most MAX_FRAMES frames (minimum 0.1 fps = 1 frame/10s).
+  - This ensures a 10-minute video gets sampled every ~5 seconds instead of
+    only having its first 120 seconds analysed at 1 fps.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import subprocess
@@ -30,19 +40,21 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Constants Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Constants ──────────────────────────────────────────────────────────────────
 
 WHISPER_MODEL_ID = "openai/whisper-large-v3"
 WHISPER_DEVICE = "cuda:1"  # shares GPU with Llama / BLIP
 
-MAX_FRAMES = 120  # cap at 2 minutes @ 1 fps to prevent OOM
-FRAME_FPS = 1  # frames to extract per second
+MAX_FRAMES = 120  # cap to prevent OOM
+MIN_FRAME_FPS = 0.1  # 1 frame every 10 seconds for very long videos
+DEFAULT_FRAME_FPS = 1.0  # fallback when duration probe fails
+
 FRAME_JPEG_QUALITY = 2  # ffmpeg -q:v (1=best, 31=worst); 2 = high quality
 
 # A frame is "unsafe" when any key danger score exceeds this threshold.
 _FRAME_UNSAFE_THRESHOLD = 0.55
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Whisper singleton Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Whisper singleton ──────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -74,13 +86,13 @@ def _get_whisper() -> _WhisperState | None:
             _whisper_state = _WhisperState(pipe=pipe)
             logger.info("Whisper-large-v3 loaded")
         except ImportError:
-            logger.warning("transformers not available Ã¢â‚¬â€ audio transcription disabled")
+            logger.warning("transformers not available — audio transcription disabled")
         except Exception:
-            logger.exception("Whisper failed to load Ã¢â‚¬â€ audio transcription disabled")
+            logger.exception("Whisper failed to load — audio transcription disabled")
     return _whisper_state
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Result dataclass Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Result dataclass ───────────────────────────────────────────────────────────
 
 
 @dataclass(frozen=True)
@@ -96,7 +108,7 @@ class VideoModerationResult:
     error_reason: str | None = None
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ ffmpeg helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── ffmpeg / ffprobe helpers ───────────────────────────────────────────────────
 
 
 def _run_ffmpeg(args: list[str], description: str) -> bool:
@@ -115,7 +127,7 @@ def _run_ffmpeg(args: list[str], description: str) -> bool:
             return False
         return True
     except FileNotFoundError:
-        logger.error("ffmpeg not found Ã¢â‚¬â€ install ffmpeg and ensure it is on PATH")
+        logger.error("ffmpeg not found — install ffmpeg and ensure it is on PATH")
         return False
     except subprocess.TimeoutExpired:
         logger.error("ffmpeg %s timed out", description)
@@ -125,15 +137,58 @@ def _run_ffmpeg(args: list[str], description: str) -> bool:
         return False
 
 
-def _extract_frames(video_path: str, output_dir: str) -> list[str]:
-    """Extract 1 frame/second as JPEG files. Returns sorted list of paths."""
+def _probe_duration(video_path: str) -> float | None:
+    """Return the video duration in seconds using ffprobe, or None on failure."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "quiet",
+                "-print_format", "json",
+                "-show_format",
+                video_path,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout.decode("utf-8", errors="replace"))
+        duration_str = data.get("format", {}).get("duration")
+        if duration_str is not None:
+            return float(duration_str)
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError):
+        pass
+    except Exception:
+        logger.debug("ffprobe duration probe failed", exc_info=True)
+    return None
+
+
+def _compute_frame_fps(duration: float | None) -> float:
+    """Return the FPS needed to sample MAX_FRAMES frames over the full video.
+
+    For a 5-minute (300 s) video: 120 / 300 = 0.4 fps → 1 frame every 2.5 s.
+    For a 30-second video: 120 / 30 = 4 fps → capped at DEFAULT_FRAME_FPS=1.
+    Falls back to DEFAULT_FRAME_FPS when duration is unavailable.
+    """
+    if not duration or duration <= 0:
+        return DEFAULT_FRAME_FPS
+    fps = MAX_FRAMES / duration
+    # Keep within [MIN_FRAME_FPS, DEFAULT_FRAME_FPS]
+    return max(MIN_FRAME_FPS, min(DEFAULT_FRAME_FPS, fps))
+
+
+def _extract_frames(video_path: str, output_dir: str, fps: float) -> list[str]:
+    """Extract frames at the given FPS as JPEG files. Returns sorted list of paths."""
     pattern = os.path.join(output_dir, "frame_%06d.jpg")
     ok = _run_ffmpeg(
         [
             "-i",
             video_path,
             "-vf",
-            f"fps={FRAME_FPS}",
+            f"fps={fps:.4f}",
             "-q:v",
             str(FRAME_JPEG_QUALITY),
             "-frames:v",
@@ -146,7 +201,7 @@ def _extract_frames(video_path: str, output_dir: str) -> list[str]:
     if not ok:
         return []
     frames = sorted(str(p) for p in Path(output_dir).glob("frame_*.jpg"))
-    logger.info("Extracted %d frames from %s", len(frames), video_path)
+    logger.info("Extracted %d frames from %s (fps=%.4f)", len(frames), video_path, fps)
     return frames
 
 
@@ -170,7 +225,7 @@ def _extract_audio(video_path: str, audio_path: str) -> bool:
     )
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Transcription Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Transcription ──────────────────────────────────────────────────────────────
 
 
 def _transcribe_audio(audio_path: str) -> str:
@@ -179,7 +234,7 @@ def _transcribe_audio(audio_path: str) -> str:
     if state is None:
         return ""
     if not os.path.exists(audio_path) or os.path.getsize(audio_path) < 1024:
-        logger.info("Audio file too small or missing Ã¢â‚¬â€ skipping transcription")
+        logger.info("Audio file too small or missing — skipping transcription")
         return ""
     try:
         logger.info("Whisper transcription started")
@@ -193,7 +248,7 @@ def _transcribe_audio(audio_path: str) -> str:
         return ""
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Per-frame risk helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Per-frame risk helpers ─────────────────────────────────────────────────────
 
 
 def _frame_risk(scores: dict[str, float]) -> float:
@@ -234,7 +289,7 @@ def _snapshot(scores: dict[str, float]) -> dict[str, float]:
     return {k: round(scores.get(k, 0.0), 4) for k in _FRAME_SNAPSHOT_KEYS}
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Score aggregation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Score aggregation ──────────────────────────────────────────────────────────
 
 
 def _aggregate_frame_scores(
@@ -312,7 +367,7 @@ def _merge_scores(
     return final
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Public API Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# ── Public API ─────────────────────────────────────────────────────────────────
 
 
 def moderate_video(
@@ -328,6 +383,10 @@ def moderate_video(
     Returns:
         VideoModerationResult whose .scores dict is compatible with
         decision_engine.decide_with_reason_code().
+
+    Phase 4: Uses dynamic FPS sampling so the entire video is covered within
+    MAX_FRAMES frames. Long videos are sampled at a lower FPS rather than
+    having only their first N seconds analysed.
     """
     if not os.path.isfile(video_path):
         return VideoModerationResult(
@@ -351,8 +410,21 @@ def moderate_video(
             audio_path = os.path.join(tmp, "audio.wav")
             os.makedirs(frames_dir, exist_ok=True)
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 1: Frame extraction Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-            frame_paths = _extract_frames(video_path, frames_dir)
+            # ── Phase 4: Dynamic frame sampling ─────────────────────────────
+            duration = _probe_duration(video_path)
+            frame_fps = _compute_frame_fps(duration)
+            if duration:
+                logger.info(
+                    "Video duration=%.1fs → dynamic fps=%.4f (covers full video in %d frames)",
+                    duration,
+                    frame_fps,
+                    MAX_FRAMES,
+                )
+            else:
+                logger.info("Video duration unknown → using default fps=%.1f", frame_fps)
+
+            # ── Stage 1: Frame extraction ────────────────────────────────────
+            frame_paths = _extract_frames(video_path, frames_dir, frame_fps)
             if not frame_paths:
                 return VideoModerationResult(
                     scores=_default_video_scores(),
@@ -363,19 +435,19 @@ def moderate_video(
                     unsafe_frame_count=0,
                     max_consecutive_unsafe=0,
                     pipeline_error=True,
-                    error_reason="Frame extraction failed Ã¢â‚¬â€ check ffmpeg installation.",
+                    error_reason="Frame extraction failed — check ffmpeg installation.",
                 )
 
             frame_count = len(frame_paths)
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 2: Concurrent frame moderation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            # ── Stage 2: Concurrent frame moderation ─────────────────────────
             from backend.pipeline.batch_analyzer import analyze_batch
 
             items: list[tuple[str, str | None]] = [(fp, caption or None) for fp in frame_paths]
             frame_results = analyze_batch(items, queue_depth=frame_count)
             logger.info("Frame moderation completed (%d frames)", len(frame_results))
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 3: Aggregate frame scores Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            # ── Stage 3: Aggregate frame scores ──────────────────────────────
             frame_max, unsafe_flags, snapshots = _aggregate_frame_scores(frame_results)
             unsafe_count = sum(unsafe_flags)
             consecutive = _max_consecutive_unsafe(unsafe_flags)
@@ -389,15 +461,15 @@ def moderate_video(
                 consecutive,
             )
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 4: Audio extraction Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            # ── Stage 4: Audio extraction ─────────────────────────────────────
             has_audio = _extract_audio(video_path, audio_path)
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 5: Whisper transcription Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            # ── Stage 5: Whisper transcription ────────────────────────────────
             transcript = ""
             if has_audio:
                 transcript = _transcribe_audio(audio_path)
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 6: Text moderation on transcript Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            # ── Stage 6: Text moderation on transcript ────────────────────────
             text_scores: dict[str, float] = {}
             if transcript:
                 from backend.pipeline.text_moderation import moderate_text
@@ -409,7 +481,7 @@ def moderate_video(
                     text_scores.get("ensemble_risk_score", 0.0),
                 )
 
-            # Ã¢â€â‚¬Ã¢â€â‚¬ Stage 7: Merge all signals Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+            # ── Stage 7: Merge all signals ─────────────────────────────────────
             final_scores = _merge_scores(
                 frame_max=frame_max,
                 text_scores=text_scores,
@@ -419,7 +491,7 @@ def moderate_video(
             )
 
             logger.info(
-                "Video moderation completed (unsafe_ratio=%.3f, consecutive=%d, " "ensemble=%.3f)",
+                "Video moderation completed (unsafe_ratio=%.3f, consecutive=%d, ensemble=%.3f)",
                 unsafe_ratio,
                 consecutive,
                 final_scores["ensemble_risk_score"],

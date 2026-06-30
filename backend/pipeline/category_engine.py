@@ -1,4 +1,4 @@
-﻿"""Category selection engine for the Aegis moderation pipeline.
+"""Category selection engine for the Aegis moderation pipeline.
 
 This module maps model category scores to the single top heritage category that
 is stored with a moderated post.

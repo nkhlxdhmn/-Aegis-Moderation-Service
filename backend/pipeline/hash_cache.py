@@ -1,4 +1,4 @@
-﻿"""In-process perceptual-hash deduplication cache for moderation decisions.
+"""In-process perceptual-hash deduplication cache for moderation decisions.
 
 The standalone application intentionally uses local memory only. Duplicate uploads can
 reuse recent decisions without requiring Redis, a database, or any external service.

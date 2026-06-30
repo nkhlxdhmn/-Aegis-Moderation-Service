@@ -315,7 +315,7 @@ class SafetyFlagsTests(TestCase):
         # Phase 5 child safety dominance: child scores are NEVER reduced.
         # child_presence_score = 0.80 (raw, unchanged)
         # child_safety_score   = 0.70 (raw, unchanged)
-        # weapon_score Ã— 0.70 = 0.42, violence_self_harm_score Ã— 0.70 = 0.42
+        # weapon_score × 0.70 = 0.42, violence_self_harm_score × 0.70 = 0.42
         self.assertAlmostEqual(result.scores["child_presence_score"], 0.80, places=5)
         self.assertAlmostEqual(result.scores["child_safety_score"], 0.70, places=5)
         self.assertAlmostEqual(result.scores["weapon_score"], 0.42, places=5)

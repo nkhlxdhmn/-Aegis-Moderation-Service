@@ -1,4 +1,4 @@
-﻿"""Model identifiers and cache locations for Aegis Moderation.
+"""Model identifiers and cache locations for Aegis Moderation.
 
 Model files are intentionally not bundled in the repository. The underlying model
 libraries download them into the configured cache on first use, or operators can run

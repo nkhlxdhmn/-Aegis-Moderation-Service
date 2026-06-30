@@ -132,7 +132,7 @@ class ClipEngineTests(TestCase):
             state_mock = MagicMock()
             state_mock.torch.cuda.empty_cache = MagicMock()
             get_state.return_value = state_mock
-            encode_text_query.return_value = MagicMock()  # non-None â†’ uses text path
+            encode_text_query.return_value = MagicMock()  # non-None → uses text path
 
             clip_engine.analyze_content("image.jpg", "caption text", "ocr text")
 
